@@ -1,10 +1,18 @@
+from pathlib import Path
 from typing import Self
 
 from pydantic import Field, SecretStr, model_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings( BaseSettings ):
+    model_config = SettingsConfigDict(
+        env_file = ".env",
+        env_file_encoding = "utf-8",
+        extra = "ignore"
+    )
+
     anthropic_api_key: SecretStr | None = None
+    prompts_dir: Path = Path( __file__ ).parents[ 2 ] / "prompts"
     is_fake: bool = Field( default = False, validation_alias = "AGENTS_FAKE" )
 
     @model_validator( mode = "after" )

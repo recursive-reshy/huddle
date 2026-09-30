@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 from pydantic import ValidationError
 
@@ -30,3 +32,13 @@ def test_api_key_never_appears_in_printed_settings( monkeypatch: pytest.MonkeyPa
     assert "sk-test-secret" not in repr( settings )
     assert "sk-test-secret" not in str( settings )
     assert "sk-test-secret" not in settings.model_dump_json()
+
+def test_settings_read_api_key_from_env_file( tmp_path: Path, monkeypatch: pytest.MonkeyPatch ) -> None:
+    monkeypatch.delenv( "ANTHROPIC_API_KEY", raising = False )
+    monkeypatch.delenv( "AGENTS_FAKE", raising = False )
+    ( tmp_path / ".env" ).write_text( "ANTHROPIC_API_KEY=sk-from-file\nUNRELATED=1\n", encoding = "utf-8" )
+
+    settings = Settings()
+
+    assert settings.anthropic_api_key is not None
+    assert settings.anthropic_api_key.get_secret_value() == "sk-from-file"
