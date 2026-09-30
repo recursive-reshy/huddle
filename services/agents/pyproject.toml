@@ -26,6 +26,8 @@ dev = [
 
 [tool.pytest.ini_options]
 testpaths = [ "tests" ]
+addopts = "-m \"not docker\""
+markers = [ "docker: builds and runs the container image (run with -m docker)" ]
 
 [tool.pyright]
 typeCheckingMode = "strict"
