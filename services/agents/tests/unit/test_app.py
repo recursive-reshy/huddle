@@ -57,3 +57,17 @@ def test_fake_mode_starts_without_prompts( monkeypatch: pytest.MonkeyPatch, tmp_
     response = TestClient( create_app( Settings( prompts_dir = tmp_path ) ) ).get( "/healthz" )
 
     assert response.status_code == 200
+
+def test_anthropic_client_uses_two_max_retries_by_default( monkeypatch: pytest.MonkeyPatch ) -> None:
+    monkeypatch.delenv( "AGENTS_FAKE", raising = False )
+
+    app = create_app( Settings( anthropic_api_key = SecretStr( "sk-test-secret" ) ) )
+
+    assert app.state.anthropic_client.max_retries == 2
+
+def test_anthropic_client_uses_the_configured_max_retries( monkeypatch: pytest.MonkeyPatch ) -> None:
+    monkeypatch.delenv( "AGENTS_FAKE", raising = False )
+
+    app = create_app( Settings( anthropic_api_key = SecretStr( "sk-test-secret" ), anthropic_max_retries = 0 ) )
+
+    assert app.state.anthropic_client.max_retries == 0

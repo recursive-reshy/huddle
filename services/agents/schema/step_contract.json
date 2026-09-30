@@ -83,7 +83,16 @@
     "ErrorCode": {
       "enum": [
         "invalid_request",
-        "unknown_kind"
+        "unknown_kind",
+        "rate_limited",
+        "overloaded",
+        "upstream_error",
+        "upstream_rejected",
+        "auth_failed",
+        "empty_reply",
+        "truncated",
+        "refused",
+        "internal_error"
       ],
       "title": "ErrorCode",
       "type": "string"

@@ -12,6 +12,7 @@ class Settings( BaseSettings ):
     )
 
     anthropic_api_key: SecretStr | None = None
+    anthropic_max_retries: int = 2
     prompts_dir: Path = Path( __file__ ).parents[ 2 ] / "prompts"
     is_fake: bool = Field( default = False, validation_alias = "AGENTS_FAKE" )
 
