@@ -1,0 +1,521 @@
+{
+  "$defs": {
+    "ArtifactKind": {
+      "enum": [
+        "brief",
+        "prd",
+        "trd"
+      ],
+      "title": "ArtifactKind",
+      "type": "string"
+    },
+    "ChatReplyOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "output_type": {
+          "const": "chat_reply",
+          "title": "Output Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "output_type",
+        "content"
+      ],
+      "title": "ChatReplyOutput",
+      "type": "object"
+    },
+    "Decision": {
+      "additionalProperties": false,
+      "properties": {
+        "decision": {
+          "title": "Decision",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "rationale": {
+          "title": "Rationale",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "decision",
+        "rationale"
+      ],
+      "title": "Decision",
+      "type": "object"
+    },
+    "DeltaLine": {
+      "additionalProperties": false,
+      "properties": {
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "type": {
+          "const": "delta",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "text"
+      ],
+      "title": "DeltaLine",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "invalid_request",
+        "unknown_kind"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorLine": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "retryable": {
+          "title": "Retryable",
+          "type": "boolean"
+        },
+        "type": {
+          "const": "error",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "code",
+        "message",
+        "retryable"
+      ],
+      "title": "ErrorLine",
+      "type": "object"
+    },
+    "MessageKind": {
+      "enum": [
+        "chat",
+        "discussion",
+        "summary",
+        "system"
+      ],
+      "title": "MessageKind",
+      "type": "string"
+    },
+    "ProjectRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "ProjectRef",
+      "type": "object"
+    },
+    "Question": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Answer"
+        },
+        "answered_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Answered By"
+        },
+        "from_agent": {
+          "title": "From Agent",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "question": {
+          "title": "Question",
+          "type": "string"
+        },
+        "round": {
+          "minimum": 1,
+          "title": "Round",
+          "type": "integer"
+        },
+        "status": {
+          "$ref": "#/$defs/QuestionStatus"
+        },
+        "thread_id": {
+          "title": "Thread Id",
+          "type": "string"
+        },
+        "to_agent": {
+          "title": "To Agent",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "thread_id",
+        "round",
+        "from_agent",
+        "to_agent",
+        "question",
+        "status",
+        "answer",
+        "answered_by"
+      ],
+      "title": "Question",
+      "type": "object"
+    },
+    "QuestionStatus": {
+      "enum": [
+        "open",
+        "answered",
+        "deferred",
+        "escalated"
+      ],
+      "title": "QuestionStatus",
+      "type": "string"
+    },
+    "ResultLine": {
+      "additionalProperties": false,
+      "properties": {
+        "output": {
+          "discriminator": {
+            "mapping": {
+              "chat_reply": "#/$defs/ChatReplyOutput"
+            },
+            "propertyName": "output_type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ChatReplyOutput"
+            }
+          ],
+          "title": "Output"
+        },
+        "prompt_hash": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Prompt Hash",
+          "type": "string"
+        },
+        "type": {
+          "const": "result",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "prompt_hash",
+        "output"
+      ],
+      "title": "ResultLine",
+      "type": "object"
+    },
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_id": {
+          "title": "Artifact Id",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ArtifactKind"
+        },
+        "section_key": {
+          "title": "Section Key",
+          "type": "string"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        },
+        "version": {
+          "minimum": 1,
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "artifact_id",
+        "version",
+        "kind",
+        "section_key",
+        "title",
+        "content"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "StepContext": {
+      "additionalProperties": false,
+      "properties": {
+        "artifacts": {
+          "items": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Artifacts",
+          "type": "array"
+        },
+        "decisions": {
+          "items": {
+            "$ref": "#/$defs/Decision"
+          },
+          "title": "Decisions",
+          "type": "array"
+        },
+        "draft": {
+          "items": {
+            "$ref": "#/$defs/Section"
+          },
+          "title": "Draft",
+          "type": "array"
+        },
+        "messages": {
+          "items": {
+            "$ref": "#/$defs/ThreadMessage"
+          },
+          "title": "Messages",
+          "type": "array"
+        },
+        "project": {
+          "$ref": "#/$defs/ProjectRef"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/Question"
+          },
+          "title": "Questions",
+          "type": "array"
+        },
+        "task": {
+          "$ref": "#/$defs/Task"
+        }
+      },
+      "required": [
+        "project",
+        "artifacts",
+        "decisions",
+        "draft",
+        "questions",
+        "messages",
+        "task"
+      ],
+      "title": "StepContext",
+      "type": "object"
+    },
+    "StepLine": {
+      "discriminator": {
+        "mapping": {
+          "delta": "#/$defs/DeltaLine",
+          "error": "#/$defs/ErrorLine",
+          "result": "#/$defs/ResultLine",
+          "usage": "#/$defs/UsageLine"
+        },
+        "propertyName": "type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/DeltaLine"
+        },
+        {
+          "$ref": "#/$defs/UsageLine"
+        },
+        {
+          "$ref": "#/$defs/ResultLine"
+        },
+        {
+          "$ref": "#/$defs/ErrorLine"
+        }
+      ]
+    },
+    "StepRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "agent": {
+          "minLength": 1,
+          "title": "Agent",
+          "type": "string"
+        },
+        "attempt": {
+          "minimum": 1,
+          "title": "Attempt",
+          "type": "integer"
+        },
+        "context": {
+          "$ref": "#/$defs/StepContext"
+        },
+        "job_id": {
+          "minimum": 1,
+          "title": "Job Id",
+          "type": "integer"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        }
+      },
+      "required": [
+        "job_id",
+        "attempt",
+        "kind",
+        "agent",
+        "model",
+        "context"
+      ],
+      "title": "StepRequest",
+      "type": "object"
+    },
+    "Task": {
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/TaskMode"
+        },
+        "notes": {
+          "title": "Notes",
+          "type": "string"
+        }
+      },
+      "required": [
+        "notes",
+        "mode"
+      ],
+      "title": "Task",
+      "type": "object"
+    },
+    "TaskMode": {
+      "enum": [
+        "normal",
+        "escalation"
+      ],
+      "title": "TaskMode",
+      "type": "string"
+    },
+    "ThreadMessage": {
+      "additionalProperties": false,
+      "properties": {
+        "author": {
+          "title": "Author",
+          "type": "string"
+        },
+        "content": {
+          "title": "Content",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/MessageKind"
+        }
+      },
+      "required": [
+        "author",
+        "kind",
+        "content"
+      ],
+      "title": "ThreadMessage",
+      "type": "object"
+    },
+    "UsageLine": {
+      "additionalProperties": false,
+      "properties": {
+        "cache_read_tokens": {
+          "minimum": 0,
+          "title": "Cache Read Tokens",
+          "type": "integer"
+        },
+        "cache_write_tokens": {
+          "minimum": 0,
+          "title": "Cache Write Tokens",
+          "type": "integer"
+        },
+        "input_tokens": {
+          "minimum": 0,
+          "title": "Input Tokens",
+          "type": "integer"
+        },
+        "model": {
+          "title": "Model",
+          "type": "string"
+        },
+        "output_tokens": {
+          "minimum": 0,
+          "title": "Output Tokens",
+          "type": "integer"
+        },
+        "type": {
+          "const": "usage",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type",
+        "model",
+        "input_tokens",
+        "output_tokens",
+        "cache_read_tokens",
+        "cache_write_tokens"
+      ],
+      "title": "UsageLine",
+      "type": "object"
+    }
+  }
+}
