@@ -1,5 +1,6 @@
 packages:
   - apps/api
+  - db
 
 allowBuilds:
   esbuild: true
