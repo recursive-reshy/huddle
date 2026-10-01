@@ -2,11 +2,14 @@
   "name": "huddle-api",
   "version": "0.1.0",
   "description": "",
-  "main": "server.js",
+  "main": "dist/src/server.js",
   "scripts": {
     "start": "node --env-file=.env dist/src/server.js",
-    "dev": "tsc && node --watch --env-file=.env dist/src/server.js",
-    "build": "tsc --build tsconfig.build.json"
+    "dev": "tsx watch --conditions=development --env-file=.env src/server.ts",
+    "build": "tsc --build tsconfig.build.json",
+    "test": "vitest run",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit"
   },
   "keywords": [],
   "author": "",
@@ -24,9 +27,19 @@
     "express": "^5.2.1"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/express": "^5.0.6",
-    "@types/node": "^26.6.3",
+    "@types/node": "^24",
+    "eslint": "^10.11.0",
     "tsx": "^4.23.15",
-    "typescript": "^7.0.2"
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.71.0",
+    "vitest": "^5.0.3"
+  },
+  "imports": {
+    "#src/*": {
+      "development": "./src/*",
+      "default": "./dist/src/*"
+    }
   }
 }

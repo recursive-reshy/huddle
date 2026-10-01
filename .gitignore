@@ -3,3 +3,4 @@ docs/
 CLAUDE.md
 
 .vscode
+node_modules
