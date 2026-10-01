@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "customConditions": [ "development" ],
+    "isolatedModules": true,
+    "erasableSyntaxOnly": true,
+    "declaration": true,
+    "removeComments": true,
+    "target": "ES2023",
+    "sourceMap": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "incremental": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [ "node" ]
+  },
+  "include": [ "src", "scripts" ]
+}

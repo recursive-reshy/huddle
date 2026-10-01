@@ -1,11 +1,11 @@
 // Packages
 import { sql } from 'drizzle-orm'
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+// Shared
+import { jobKinds, projectStates } from '@my-team/shared'
 
 const epochMs = sql`(CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))`
 
-export const states = [ 'DISCOVERY', 'BRIEF_DRAFT', 'GATE_BRIEF', 'SA_REVIEW', 'PRD_DRAFT', 'GATE_PRD', 'TRD_DRAFT', 'GATE_TRD', 'DONE', 'ESCALATED' ] as const
-export const jobKinds = [ 'pm_discovery_reply', 'pm_draft_brief', 'sa_review_brief', 'clarification_round', 'loop_summary', 'pm_draft_prd', 'sa_draft_trd', 'revise_artifact', 'agent_chat_reply' ] as const
 export const eventTypes = [
   'StateTransitioned', 'GateSentBack', 'JobClaimed', 'JobCompleted', 'JobFailed', 'MessageCompleted',
   'ArtifactVersionCreated', 'ArtifactVersionApproved', 'ClarificationAsked', 'ClarificationAnswered',
@@ -22,7 +22,7 @@ export const agents = sqliteTable( 'agents', {
 export const projects = sqliteTable( 'projects', {
   id: text( 'id' ).primaryKey(),
   name: text( 'name' ).notNull(),
-  current_state: text( 'current_state', { enum: states } ).notNull(),
+  current_state: text( 'current_state', { enum: projectStates } ).notNull(),
   state_rev: integer( 'state_rev' ).notNull().default( 0 ),
   created_at: integer( 'created_at' ).notNull().default( epochMs ),
   updated_at: integer( 'updated_at' ).notNull().default( epochMs ),
@@ -149,3 +149,4 @@ export const backups = sqliteTable( 'backups', {
 } )
 
 export type EventRow = typeof events.$inferSelect
+export type JobRow = typeof jobs.$inferSelect
