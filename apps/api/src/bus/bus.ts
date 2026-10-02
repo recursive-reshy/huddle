@@ -1,10 +1,14 @@
+// Shared
+import type { DeltaEvent } from '@my-team/shared'
 // DB
 import type { EventRow } from '#src/db/schema.js'
 
-export type BusListener = ( event: EventRow ) => void
+export type BusEvent = EventRow | DeltaEvent
+
+export type BusListener = ( event: BusEvent ) => void
 
 export interface Bus {
-  publish( event: EventRow ): void
+  publish( event: BusEvent ): void
   subscribe( listener: BusListener ): () => void
   listenerCount(): number
 }
@@ -13,7 +17,7 @@ export function createBus(): Bus {
   const listeners = new Set< BusListener >()
 
   return {
-    publish( event: EventRow ): void {
+    publish( event: BusEvent ): void {
       for( const listener of [ ...listeners ] ) {
         try {
           listener( event )

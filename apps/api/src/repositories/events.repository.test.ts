@@ -6,7 +6,7 @@ import { createBus } from '#src/bus/bus.js'
 import { writeTransaction } from '#src/db/transaction.js'
 import { projects, type EventRow } from '#src/db/schema.js'
 // Repositories
-import { appendEvent, type NewEvent } from './events.repository.js'
+import { appendEvent, listEventsAfter, type NewEvent } from './events.repository.js'
 // Test support
 import { createTempDatabase, type TempDatabase } from '#src/test-support/temp-database.js'
 
@@ -53,5 +53,26 @@ describe( 'appendEvent', () => {
 
   it( 'lets the database reject a payload missing its required fields', () => {
     expect( () => append( { project_id: 'p1', type: 'StateTransitioned', payload: { from: 'DISCOVERY' } } ) ).toThrow( /payload/ )
+  } )
+} )
+
+describe( 'listEventsAfter', () => {
+  it( 'returns the events with a greater id, oldest first', () => {
+    const [ first, second, third ] = [ append( { project_id: 'p1', type: 'JobClaimed', payload: {} } ), append( { project_id: 'p1', type: 'JobCompleted', payload: {} } ), append( { project_id: 'p1', type: 'JobFailed', payload: {} } ) ]
+
+    expect( listEventsAfter( temp.db, first.id ) ).toEqual( [ second, third ] )
+  } )
+
+  it( 'returns every event after id 0', () => {
+    const [ first, second ] = [ append( { project_id: 'p1', type: 'JobClaimed', payload: {} } ), append( { project_id: 'p1', type: 'JobClaimed', payload: {} } ) ]
+
+    expect( listEventsAfter( temp.db, 0 ) ).toEqual( [ first, second ] )
+  } )
+
+  it( 'returns nothing when the id is the latest or beyond it', () => {
+    const last = append( { project_id: 'p1', type: 'JobClaimed', payload: {} } )
+
+    expect( listEventsAfter( temp.db, last.id ) ).toEqual( [] )
+    expect( listEventsAfter( temp.db, last.id + 100 ) ).toEqual( [] )
   } )
 } )

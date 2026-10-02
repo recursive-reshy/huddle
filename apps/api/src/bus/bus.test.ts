@@ -1,5 +1,7 @@
 // Packages
 import { describe, expect, it, vi } from 'vitest'
+// Shared
+import type { DeltaEvent } from '@my-team/shared'
 // Bus
 import { createBus } from './bus.js'
 // DB
@@ -19,6 +21,17 @@ describe( 'bus', () => {
 
     expect( first ).toHaveBeenCalledWith( event )
     expect( second ).toHaveBeenCalledWith( event )
+  } )
+
+  it( 'delivers a delta event, which has no id, the same way', () => {
+    const bus = createBus()
+    const listener = vi.fn()
+    const delta: DeltaEvent = { project_id: 'p1', job_id: 1, text: 'Hel' }
+    bus.subscribe( listener )
+
+    bus.publish( delta )
+
+    expect( listener ).toHaveBeenCalledWith( delta )
   } )
 
   it( 'counts listeners and drops one on unsubscribe', () => {

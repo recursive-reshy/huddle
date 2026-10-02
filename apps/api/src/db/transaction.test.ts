@@ -71,7 +71,9 @@ describe( 'writeTransaction', () => {
   it( 'publishes the collected events only after the commit', () => {
     const seen: { inTransaction: boolean, rows: number, event: EventRow }[] = []
     bus.subscribe( ( event ) => {
-      seen.push( { inTransaction: temp.db.$client.inTransaction, rows: projectCount(), event } )
+      if( 'id' in event ) {
+        seen.push( { inTransaction: temp.db.$client.inTransaction, rows: projectCount(), event } )
+      }
     } )
 
     writeTransaction( temp.db, bus, ( tx, events ) => {

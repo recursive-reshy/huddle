@@ -24,7 +24,11 @@ beforeEach( () => {
   temp = createTempDatabase()
   bus = createBus()
   published = []
-  bus.subscribe( ( event ) => published.push( event ) )
+  bus.subscribe( ( event ) => {
+    if( 'id' in event ) {
+      published.push( event )
+    }
+  } )
 } )
 
 afterEach( () => {

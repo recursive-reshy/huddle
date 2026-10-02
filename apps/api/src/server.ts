@@ -36,7 +36,7 @@ const worker = createWorker( {
 
 worker.start()
 
-const server = createApp().listen( port, () => {
+const server = createApp( { db, bus } ).listen( port, () => {
   console.log( `api listening on ${port}` )
 } )
 
