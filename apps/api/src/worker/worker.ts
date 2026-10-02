@@ -3,6 +3,8 @@ import type { Bus } from '#src/bus/bus.js'
 // DB
 import type { Db } from '#src/db/connection.js'
 import type { JobRow } from '#src/db/schema.js'
+// Logger
+import { logger } from '#src/logger.js'
 // Services
 import { claimJob, completeJob, reportJobFailure, sweepExpiredLeases } from '#src/services/jobs.service.js'
 
@@ -39,7 +41,7 @@ export function createWorker( { db, bus, leaseMs, runStep }: WorkerOptions ): Wo
     try {
       outcome = await runStep( job, controller.signal )
     } catch( error ) {
-      console.error( 'step threw', error )
+      logger.error( { err: error }, 'step threw' )
       outcome = { ok: false, error: error instanceof Error ? error.message : String( error ), retryable: false }
     }
 
@@ -88,7 +90,7 @@ export function createWorker( { db, bus, leaseMs, runStep }: WorkerOptions ): Wo
 
     active = true
     current = drain().catch( ( error: unknown ) => {
-      console.error( 'worker loop failed', error )
+      logger.error( { err: error }, 'worker loop failed' )
     } )
   }
 
@@ -96,7 +98,7 @@ export function createWorker( { db, bus, leaseMs, runStep }: WorkerOptions ): Wo
     try {
       sweepExpiredLeases( db, bus, Date.now() )
     } catch( error ) {
-      console.error( 'lease sweep failed', error )
+      logger.error( { err: error }, 'lease sweep failed' )
     }
 
     wake()

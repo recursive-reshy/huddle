@@ -2,6 +2,8 @@
 import type { DeltaEvent } from '@my-team/shared'
 // DB
 import type { EventRow } from '#src/db/schema.js'
+// Logger
+import { logger } from '#src/logger.js'
 
 export type BusEvent = EventRow | DeltaEvent
 
@@ -15,15 +17,32 @@ export interface Bus {
 
 export function createBus(): Bus {
   const listeners = new Set< BusListener >()
+  const queue: BusEvent[] = []
+  let delivering = false
 
   return {
+    // a listener may publish while it is being called; that event waits its turn so every listener sees events in publish order
     publish( event: BusEvent ): void {
-      for( const listener of [ ...listeners ] ) {
-        try {
-          listener( event )
-        } catch( error ) {
-          console.error( 'bus listener threw', error )
+      queue.push( event )
+
+      if( delivering ) {
+        return
+      }
+
+      delivering = true
+
+      try {
+        for( let next = queue.shift(); next !== undefined; next = queue.shift() ) {
+          for( const listener of [ ...listeners ] ) {
+            try {
+              listener( next )
+            } catch( error ) {
+              logger.error( { err: error }, 'bus listener threw' )
+            }
+          }
         }
+      } finally {
+        delivering = false
       }
     },
 

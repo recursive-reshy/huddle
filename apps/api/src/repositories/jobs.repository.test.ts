@@ -5,9 +5,9 @@ import { createBus } from '#src/bus/bus.js'
 // DB
 import { writeTransaction, type Tx } from '#src/db/transaction.js'
 // Repositories
-import { claimNextJob, failJob, finishJob, listExpiredJobs, listRunningJobs, requeueJob } from './jobs.repository.js'
+import { claimNextJob, enqueueJob, failJob, finishJob, hasReplyInFlight, listExpiredJobs, listRunningJobs, requeueJob } from './jobs.repository.js'
 // Test support
-import { insertJob, readJob } from '#src/test-support/insert-job.js'
+import { insertJob, insertProject, readJob } from '#src/test-support/insert-job.js'
 import { createTempDatabase, type TempDatabase } from '#src/test-support/temp-database.js'
 
 const leaseMs = 900_000
@@ -140,5 +140,64 @@ describe( 'listing running jobs', () => {
     insertJob( temp.db, { status: 'running', lease_expires_at: 201 } )
 
     expect( inTransaction( ( tx ) => listExpiredJobs( tx, 200 ) ).map( ( job ) => job.id ) ).toEqual( [ expired.id, boundary.id ] )
+  } )
+} )
+
+describe( 'enqueueJob', () => {
+  it( 'inserts a queued job and returns the stored row', () => {
+    insertProject( temp.db, 'p1' )
+
+    const job = inTransaction( ( tx ) => enqueueJob( tx, { project_id: 'p1', kind: 'pm_discovery_reply', agent: 'pm', input: { message_id: 4 } } ) )
+
+    expect( job ).toMatchObject( { project_id: 'p1', kind: 'pm_discovery_reply', agent: 'pm', status: 'queued', input: { message_id: 4 }, attempts: 0 } )
+    expect( readJob( temp.db, job.id ) ).toEqual( job )
+  } )
+} )
+
+describe( 'hasReplyInFlight', () => {
+  const thread = { project_id: 'p1', agent: 'pm' } as const
+
+  function inFlight( overrides: Parameters< typeof insertJob >[ 1 ] ): boolean {
+    insertJob( temp.db, overrides )
+
+    return inTransaction( ( tx ) => hasReplyInFlight( tx, thread ) )
+  }
+
+  it( 'is false when the project has no jobs', () => {
+    insertProject( temp.db, 'p1' )
+
+    expect( inTransaction( ( tx ) => hasReplyInFlight( tx, thread ) ) ).toBe( false )
+  } )
+
+  it( 'is true for a queued pm_discovery_reply', () => {
+    expect( inFlight( { status: 'queued' } ) ).toBe( true )
+  } )
+
+  it( 'is true for a running pm_discovery_reply', () => {
+    expect( inFlight( { status: 'running', lease_expires_at: 10 } ) ).toBe( true )
+  } )
+
+  it( 'is true for a queued agent_chat_reply on the same agent', () => {
+    expect( inFlight( { kind: 'agent_chat_reply', status: 'queued' } ) ).toBe( true )
+  } )
+
+  it.each( [
+    [ 'succeeded', { status: 'succeeded', finished_at: 10 } ],
+    [ 'failed', { status: 'failed', finished_at: 10 } ],
+    [ 'cancelled', { status: 'cancelled', finished_at: 10 } ],
+  ] as const )( 'is false once the reply is %s', ( _status, overrides ) => {
+    expect( inFlight( overrides ) ).toBe( false )
+  } )
+
+  it( 'ignores jobs of other kinds', () => {
+    expect( inFlight( { kind: 'pm_draft_brief', status: 'queued' } ) ).toBe( false )
+  } )
+
+  it( 'ignores another agent on the same project', () => {
+    expect( inFlight( { kind: 'agent_chat_reply', agent: 'sa', status: 'queued' } ) ).toBe( false )
+  } )
+
+  it( 'ignores another project', () => {
+    expect( inFlight( { project_id: 'p2', status: 'queued' } ) ).toBe( false )
   } )
 } )

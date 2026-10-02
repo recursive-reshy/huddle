@@ -1,7 +1,18 @@
 // Packages
 import { describe, expect, it } from 'vitest'
 // Shared
-import { createProjectBody, errorResponse, messageResponse, postMessageBody, projectResponse, threadResponse } from './rest.js'
+import {
+  createProjectBody,
+  errorResponse,
+  messageEnvelope,
+  messageResponse,
+  postMessageBody,
+  projectEnvelope,
+  projectResponse,
+  projectsEnvelope,
+  threadEnvelope,
+  threadResponse,
+} from './rest.js'
 
 describe( 'createProjectBody', () => {
   it( 'accepts a name', () => {
@@ -58,5 +69,31 @@ describe( 'messageResponse and threadResponse', () => {
 describe( 'errorResponse', () => {
   it( 'is { error }', () => {
     expect( errorResponse.parse( { error: 'Internal Server Error' } ) ).toEqual( { error: 'Internal Server Error' } )
+  } )
+} )
+
+describe( 'response envelopes', () => {
+  const project = { id: 'p1', name: 'Huddle', current_state: 'DISCOVERY', state_rev: 0, latest_event_id: 0 }
+  const message = { id: 1, project_id: 'p1', thread: 'pm', author: 'human', kind: 'chat', content: 'Hi', created_at: 1_700_000_000_000 }
+
+  it( 'wraps one project as { project }', () => {
+    expect( projectEnvelope.parse( { project } ) ).toEqual( { project } )
+    expect( projectEnvelope.safeParse( project ).success ).toBe( false )
+  } )
+
+  it( 'wraps a list as { projects }', () => {
+    expect( projectsEnvelope.parse( { projects: [ project ] } ) ).toEqual( { projects: [ project ] } )
+  } )
+
+  it( 'wraps one message as { message }', () => {
+    expect( messageEnvelope.parse( { message } ) ).toEqual( { message } )
+  } )
+
+  it( 'wraps a thread as { project_id, thread, messages }', () => {
+    const thread = { project_id: 'p1', thread: 'pm', messages: [ message ] }
+
+    expect( threadEnvelope.parse( thread ) ).toEqual( thread )
+    expect( threadEnvelope.safeParse( { messages: [ message ] } ).success ).toBe( false )
+    expect( threadEnvelope.safeParse( { ...thread, thread: 'human' } ).success ).toBe( false )
   } )
 } )

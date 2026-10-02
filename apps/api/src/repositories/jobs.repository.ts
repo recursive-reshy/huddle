@@ -1,5 +1,7 @@
 // Packages
-import { and, asc, eq, lte, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm'
+// Shared
+import type { JobKind } from '@my-team/shared'
 // DB
 import type { Tx } from '#src/db/transaction.js'
 import { jobs, type JobRow } from '#src/db/schema.js'
@@ -58,4 +60,23 @@ export function listExpiredJobs( tx: Tx, now: number ): JobRow[] {
     .where( and( eq( jobs.status, 'running' ), lte( jobs.lease_expires_at, now ) ) )
     .orderBy( asc( jobs.id ) )
     .all()
+}
+
+export function enqueueJob( tx: Tx, { project_id, kind, agent, input }: { project_id: string, kind: JobKind, agent: string, input: Record< string, unknown > } ): JobRow {
+  return tx.insert( jobs ).values( { project_id, kind, agent, input } ).returning().get()
+}
+
+// jobs has no thread column: a thread is named after its agent, so project and agent identify it
+export function hasReplyInFlight( tx: Tx, { project_id, agent }: { project_id: string, agent: string } ): boolean {
+  const found = tx.select( { id: jobs.id } ).from( jobs )
+    .where( and(
+      eq( jobs.project_id, project_id ),
+      eq( jobs.agent, agent ),
+      inArray( jobs.kind, [ 'pm_discovery_reply', 'agent_chat_reply' ] ),
+      inArray( jobs.status, [ 'queued', 'running' ] ),
+    ) )
+    .limit( 1 )
+    .get()
+
+  return found !== undefined
 }

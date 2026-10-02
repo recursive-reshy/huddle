@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createBus, type Bus } from '#src/bus/bus.js'
 // DB
 import type { EventRow, JobRow } from '#src/db/schema.js'
+// Logger
+import { logger } from '#src/logger.js'
 // Worker
 import { createWorker, fallbackTickMs, sweepIntervalMs, type StepOutcome, type Worker } from './worker.js'
 // Test support
@@ -245,7 +247,7 @@ describe( 'step outcomes', () => {
   } )
 
   it( 'fails the job as non-retryable, logs the error and carries on when the step throws', async () => {
-    const logged = vi.spyOn( console, 'error' ).mockImplementation( () => undefined )
+    const logged = vi.spyOn( logger, 'error' ).mockImplementation( () => undefined )
     const broken = insertJob( temp.db )
     const next = insertJob( temp.db )
 
@@ -254,7 +256,7 @@ describe( 'step outcomes', () => {
 
     expect( readJob( temp.db, broken.id ) ).toMatchObject( { status: 'failed', attempts: 1, error: 'kaboom' } )
     expect( readJob( temp.db, next.id ).status ).toBe( 'succeeded' )
-    expect( logged ).toHaveBeenCalledWith( expect.any( String ), expect.objectContaining( { message: 'kaboom' } ) )
+    expect( logged ).toHaveBeenCalledWith( { err: expect.objectContaining( { message: 'kaboom' } ) }, 'step threw' )
 
     logged.mockRestore()
   } )

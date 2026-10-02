@@ -6,6 +6,8 @@ import { createBus, type Bus } from '#src/bus/bus.js'
 // DB
 import { writeTransaction } from './transaction.js'
 import { projects, type EventRow } from './schema.js'
+// Logger
+import { logger } from '#src/logger.js'
 // Repositories
 import { appendEvent } from '#src/repositories/events.repository.js'
 // Test support
@@ -109,7 +111,7 @@ describe( 'writeTransaction', () => {
 
   it( 'still returns, with the data committed, when a bus listener throws', () => {
     const after = vi.fn()
-    const logged = vi.spyOn( console, 'error' ).mockImplementation( () => undefined )
+    const logged = vi.spyOn( logger, 'error' ).mockImplementation( () => undefined )
     bus.subscribe( () => { throw new Error( 'listener broke' ) } )
     bus.subscribe( after )
 

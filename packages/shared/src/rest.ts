@@ -39,5 +39,17 @@ export type MessageResponse = z.infer< typeof messageResponse >
 export const threadResponse = z.strictObject( { messages: z.array( messageResponse ) } )
 export type ThreadResponse = z.infer< typeof threadResponse >
 
+export const projectEnvelope = z.strictObject( { project: projectResponse } )
+export type ProjectEnvelope = z.infer< typeof projectEnvelope >
+
+export const projectsEnvelope = z.strictObject( { projects: z.array( projectResponse ) } )
+export type ProjectsEnvelope = z.infer< typeof projectsEnvelope >
+
+export const messageEnvelope = z.strictObject( { message: messageResponse } )
+export type MessageEnvelope = z.infer< typeof messageEnvelope >
+
+export const threadEnvelope = z.strictObject( { project_id: z.string(), thread: threadId, messages: z.array( messageResponse ) } )
+export type ThreadEnvelope = z.infer< typeof threadEnvelope >
+
 export const errorResponse = z.strictObject( { error: z.string() } )
 export type ErrorResponse = z.infer< typeof errorResponse >

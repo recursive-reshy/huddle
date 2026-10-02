@@ -47,3 +47,31 @@ describe( 'createApp', () => {
     temp.cleanup()
   } )
 } )
+
+describe( 'X-Powered-By', () => {
+  it( 'is not sent', async () => {
+    const temp = createTempDatabase()
+    const server = createApp( { db: temp.db, bus: createBus() } ).listen( 0 )
+    const { port } = server.address() as AddressInfo
+
+    const response = await fetch( `http://127.0.0.1:${port}/api/health` )
+
+    expect( response.headers.has( 'x-powered-by' ) ).toBe( false )
+
+    await new Promise( ( resolve ) => server.close( resolve ) )
+    temp.cleanup()
+  } )
+
+  it( 'is not sent on an error response either', async () => {
+    const temp = createTempDatabase()
+    const server = createApp( { db: temp.db, bus: createBus() } ).listen( 0 )
+    const { port } = server.address() as AddressInfo
+
+    const response = await fetch( `http://127.0.0.1:${port}/api/projects/nope` )
+
+    expect( response.headers.has( 'x-powered-by' ) ).toBe( false )
+
+    await new Promise( ( resolve ) => server.close( resolve ) )
+    temp.cleanup()
+  } )
+} )

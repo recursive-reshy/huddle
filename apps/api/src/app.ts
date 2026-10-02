@@ -7,6 +7,8 @@ import type { Db } from '#src/db/connection.js'
 // Errors
 import { errorHandler } from '#src/errors.js'
 // Routes
+import { messagesRoutes } from '#src/routes/messages.routes.js'
+import { projectsRoutes } from '#src/routes/projects.routes.js'
 import { streamRoutes } from '#src/stream/stream.routes.js'
 
 declare global {
@@ -22,6 +24,9 @@ declare global {
 export function createApp( { db, bus }: { db: Db, bus: Bus } ): Express {
   const app = express()
 
+  app.disable( 'x-powered-by' )
+  app.use( express.json() )
+
   app.locals.db = db
   app.locals.bus = bus
 
@@ -29,6 +34,8 @@ export function createApp( { db, bus }: { db: Db, bus: Bus } ): Express {
     res.status( 200 ).json( { status: 'ok' } )
   } )
 
+  app.use( '/api', projectsRoutes )
+  app.use( '/api', messagesRoutes )
   app.use( '/api', streamRoutes )
 
   app.use( errorHandler )
