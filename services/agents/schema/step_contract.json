@@ -126,6 +126,21 @@
       "title": "ErrorLine",
       "type": "object"
     },
+    "HeartbeatLine": {
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "const": "heartbeat",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "type"
+      ],
+      "title": "HeartbeatLine",
+      "type": "object"
+    },
     "MessageKind": {
       "enum": [
         "chat",
@@ -370,6 +385,7 @@
         "mapping": {
           "delta": "#/$defs/DeltaLine",
           "error": "#/$defs/ErrorLine",
+          "heartbeat": "#/$defs/HeartbeatLine",
           "result": "#/$defs/ResultLine",
           "usage": "#/$defs/UsageLine"
         },
@@ -387,6 +403,9 @@
         },
         {
           "$ref": "#/$defs/ErrorLine"
+        },
+        {
+          "$ref": "#/$defs/HeartbeatLine"
         }
       ]
     },
@@ -436,6 +455,10 @@
     "Task": {
       "additionalProperties": false,
       "properties": {
+        "may_ask": {
+          "title": "May Ask",
+          "type": "boolean"
+        },
         "mode": {
           "$ref": "#/$defs/TaskMode"
         },
@@ -446,7 +469,8 @@
       },
       "required": [
         "notes",
-        "mode"
+        "mode",
+        "may_ask"
       ],
       "title": "Task",
       "type": "object"

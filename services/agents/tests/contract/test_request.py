@@ -11,7 +11,7 @@ valid_context: dict[ str, object ] = {
     "draft": [],
     "questions": [],
     "messages": [],
-    "task": { "notes": "hello", "mode": "normal" }
+    "task": { "notes": "hello", "mode": "normal", "may_ask": False }
 }
 
 valid_request: dict[ str, object ] = {
@@ -47,7 +47,7 @@ def test_request_parses_every_field() -> None:
         draft = [],
         questions = [],
         messages = [],
-        task = Task( notes = "hello", mode = TaskMode.NORMAL )
+        task = Task( notes = "hello", mode = TaskMode.NORMAL, may_ask = False )
     )
 
 def test_request_without_model_raises() -> None:

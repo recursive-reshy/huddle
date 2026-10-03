@@ -28,7 +28,7 @@ valid_request: dict[ str, object ] = {
         "draft": [],
         "questions": [],
         "messages": [],
-        "task": { "notes": "hello", "mode": "normal" }
+        "task": { "notes": "hello", "mode": "normal", "may_ask": False }
     }
 }
 

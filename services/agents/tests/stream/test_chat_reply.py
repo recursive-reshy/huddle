@@ -34,7 +34,7 @@ def make_request( messages: list[ dict[ str, str ] ] ) -> dict[ str, object ]:
             "draft": [],
             "questions": [],
             "messages": messages,
-            "task": { "notes": "", "mode": "normal" }
+            "task": { "notes": "", "mode": "normal", "may_ask": False }
         }
     }
 

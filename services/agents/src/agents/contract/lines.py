@@ -36,4 +36,9 @@ class ErrorLine( BaseModel ):
     message: str
     retryable: bool
 
-StepLine = Annotated[ DeltaLine | UsageLine | ResultLine | ErrorLine, Field( discriminator = "type" ) ]
+class HeartbeatLine( BaseModel ):
+    model_config = ConfigDict( extra = "forbid" )
+
+    type: Literal[ "heartbeat" ]
+
+StepLine = Annotated[ DeltaLine | UsageLine | ResultLine | ErrorLine | HeartbeatLine, Field( discriminator = "type" ) ]

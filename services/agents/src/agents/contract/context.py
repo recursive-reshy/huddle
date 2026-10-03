@@ -72,6 +72,7 @@ class Task( BaseModel ):
 
     notes: str
     mode: TaskMode
+    may_ask: bool = Field( strict = True )
 
 class StepContext( BaseModel ):
     model_config = ConfigDict( extra = "forbid" )

@@ -2,7 +2,14 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from agents.contract.errors import ErrorCode
-from agents.contract.lines import DeltaLine, ErrorLine, ResultLine, StepLine, UsageLine
+from agents.contract.lines import (
+    DeltaLine,
+    ErrorLine,
+    HeartbeatLine,
+    ResultLine,
+    StepLine,
+    UsageLine
+)
 from agents.contract.outputs import ChatReplyOutput
 
 prompt_hash = "a" * 64
@@ -142,3 +149,19 @@ def test_empty_text_raises( payload: dict[ str, object ] ) -> None:
 def test_extra_field_raises( payload: dict[ str, object ] ) -> None:
     with pytest.raises( ValidationError ):
         TypeAdapter( StepLine ).validate_python( payload )
+
+def test_heartbeat_parses_through_step_line_as_a_heartbeat_line() -> None:
+    adapter: TypeAdapter[ StepLine ] = TypeAdapter( StepLine )
+
+    parsed = adapter.validate_python( { "type": "heartbeat" } )
+
+    assert isinstance( parsed, HeartbeatLine )
+
+def test_heartbeat_with_an_extra_field_raises() -> None:
+    with pytest.raises( ValidationError ):
+        TypeAdapter( StepLine ).validate_python( { "type": "heartbeat", "unexpected": True } )
+
+def test_heartbeat_serializes_to_only_its_type() -> None:
+    adapter: TypeAdapter[ StepLine ] = TypeAdapter( StepLine )
+
+    assert adapter.dump_json( HeartbeatLine( type = "heartbeat" ) ) == b'{"type":"heartbeat"}'

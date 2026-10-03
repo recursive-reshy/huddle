@@ -46,7 +46,7 @@ full_context: dict[ str, object ] = {
     "draft": [ { **section_payload, "kind": "trd" } ],
     "questions": [ question_payload ],
     "messages": [ { "author": "naresh", "kind": "discussion", "content": "Why?" } ],
-    "task": { "notes": "Be brief", "mode": "escalation" }
+    "task": { "notes": "Be brief", "mode": "escalation", "may_ask": False }
 }
 
 def test_context_parses_every_nested_model_and_enum() -> None:
@@ -81,7 +81,7 @@ def test_context_parses_every_nested_model_and_enum() -> None:
         )
     ]
     assert context.messages == [ ThreadMessage( author = "naresh", kind = MessageKind.DISCUSSION, content = "Why?" ) ]
-    assert context.task == Task( notes = "Be brief", mode = TaskMode.ESCALATION )
+    assert context.task == Task( notes = "Be brief", mode = TaskMode.ESCALATION, may_ask = False )
 
 def test_context_with_empty_lists_and_empty_notes_is_accepted() -> None:
     context = StepContext.model_validate(
@@ -92,12 +92,12 @@ def test_context_with_empty_lists_and_empty_notes_is_accepted() -> None:
             "draft": [],
             "questions": [],
             "messages": [],
-            "task": { "notes": "", "mode": "normal" }
+            "task": { "notes": "", "mode": "normal", "may_ask": False }
         }
     )
 
     assert context.artifacts == []
-    assert context.task == Task( notes = "", mode = TaskMode.NORMAL )
+    assert context.task == Task( notes = "", mode = TaskMode.NORMAL, may_ask = False )
 
 @pytest.mark.parametrize( "field", list( full_context ) )
 def test_context_missing_a_top_level_field_raises( field: str ) -> None:
@@ -165,3 +165,23 @@ def test_context_with_extra_field_raises( path: str ) -> None:
 
     with pytest.raises( ValidationError ):
         StepContext.model_validate( payload )
+
+@pytest.mark.parametrize( "may_ask", [ True, False ] )
+def test_task_parses_may_ask_as_given( may_ask: bool ) -> None:
+    context = StepContext.model_validate(
+        { **full_context, "task": { "notes": "", "mode": "normal", "may_ask": may_ask } }
+    )
+
+    assert context.task.may_ask is may_ask
+
+@pytest.mark.parametrize(
+    "task",
+    [
+        { "notes": "", "mode": "normal" },
+        { "notes": "", "mode": "normal", "may_ask": None },
+        { "notes": "", "mode": "normal", "may_ask": "yes" }
+    ]
+)
+def test_task_with_missing_null_or_non_bool_may_ask_raises( task: dict[ str, object ] ) -> None:
+    with pytest.raises( ValidationError ):
+        StepContext.model_validate( { **full_context, "task": task } )
