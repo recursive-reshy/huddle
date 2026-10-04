@@ -71,8 +71,10 @@ describe( 'stepLine', () => {
     expect( stepLine.safeParse( { type: 'error', code: 'nope', message: 'm', retryable: false } ).success ).toBe( false )
   } )
 
-  // Waits on the Lead Dev (Agents): step_contract.json has no heartbeat line yet (TRD v1.5, ADR 21).
-  it.todo( 'accepts a heartbeat line that carries nothing' )
+  it( 'accepts a heartbeat line that carries nothing', () => {
+    expect( stepLine.parse( { type: 'heartbeat' } ) ).toEqual( { type: 'heartbeat' } )
+    expect( stepLine.safeParse( { type: 'heartbeat', extra: 1 } ).success ).toBe( false )
+  } )
 
   // Waits on the Lead Dev (Agents): step_contract.json only has the chat_reply output (TRD v1.8 §6 lists five).
   it.todo( 'accepts result lines for draft_artifact, review, clarification and summary' )
@@ -86,7 +88,7 @@ describe( 'stepRequest', () => {
     draft: [],
     questions: [],
     messages: [ { author: 'human', kind: 'chat', content: 'Hi' } ],
-    task: { notes: '', mode: 'normal' },
+    task: { notes: '', mode: 'normal', may_ask: false },
   }
   const request = { job_id: 1, attempt: 1, kind: 'pm_discovery_reply', agent: 'pm', model: 'fake', context }
 
@@ -104,6 +106,9 @@ describe( 'stepRequest', () => {
     expect( stepRequest.safeParse( { ...request, context: withoutMessages } ).success ).toBe( false )
   } )
 
-  // Waits on the Lead Dev (Agents): the exported task has no may_ask yet (TRD v1.6).
-  it.todo( 'carries task.may_ask' )
+  it( 'carries task.may_ask', () => {
+    const withoutMayAsk = { ...request, context: { ...context, task: { notes: '', mode: 'normal' } } }
+
+    expect( stepRequest.safeParse( withoutMayAsk ).success ).toBe( false )
+  } )
 } )
