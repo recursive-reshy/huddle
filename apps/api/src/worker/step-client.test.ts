@@ -10,10 +10,10 @@ import type { JobRow } from '#src/db/schema.js'
 import { logger } from '#src/logger.js'
 // Worker
 import { callStep, type StepClientDeps } from './step-client.js'
-import type { StepOutcome } from './worker.js'
+import { createWorker, type StepOutcome, type Worker } from './worker.js'
 // Test support
 import { startFakeAgentService, type Exchange, type ExchangeHandler, type FakeAgentService } from '#src/test-support/fake-agent-service.js'
-import { insertJob } from '#src/test-support/insert-job.js'
+import { insertJob, readJob } from '#src/test-support/insert-job.js'
 import { createTempDatabase, type TempDatabase } from '#src/test-support/temp-database.js'
 
 const sonnet = 'claude-sonnet-5-5'
@@ -253,9 +253,43 @@ describe( 'callStep success', () => {
     expect( llmCalls() ).toEqual( [] )
   } )
 
-  it( 'does not treat a result without a trailing newline as a line', async () => {
+  it( 'reads a final result line that has no trailing newline', async () => {
     reply( ( { writeRaw, end } ) => {
       writeRaw( JSON.stringify( resultLine ) )
+      end()
+    } )
+
+    expect( await start() ).toEqual( { ok: true, result: resultLine } )
+  } )
+
+  it( 'fails without retry when the unterminated final line is not JSON', async () => {
+    reply( ( { writeRaw, end } ) => {
+      writeRaw( '{"type":"result","prompt_h' )
+      end()
+    } )
+
+    const outcome = await start()
+
+    expect( outcome ).toMatchObject( { ok: false, retryable: false } )
+    expect( outcome.ok === false && outcome.error ).toMatch( /^contract: / )
+  } )
+
+  it( 'fails without retry when the unterminated final line fails the StepLine check', async () => {
+    reply( ( { writeRaw, end } ) => {
+      writeRaw( JSON.stringify( { type: 'usage', model: sonnet } ) )
+      end()
+    } )
+
+    const outcome = await start()
+
+    expect( outcome ).toMatchObject( { ok: false, retryable: false } )
+    expect( outcome.ok === false && outcome.error ).toMatch( /^contract: / )
+  } )
+
+  it( 'still ends as a missing result when the leftover is only whitespace', async () => {
+    reply( ( { write, writeRaw, end } ) => {
+      write( delta( 'Hel' ) )
+      writeRaw( '  ' )
       end()
     } )
 
@@ -597,5 +631,92 @@ describe( 'callStep caller abort', () => {
     expect( await call ).toEqual( { ok: false, error: 'aborted', retryable: true } )
     await closed
     expect( vi.getTimerCount() ).toBe( 0 )
+  } )
+} )
+
+describe( 'worker with the step client: an agent service that is late', () => {
+  let worker: Worker
+
+  function startWorker(): void {
+    worker = createWorker( {
+      db: temp.db,
+      bus,
+      leaseMs: 900_000,
+      runStep: ( claimed, signal ) => callStep( deps(), { job: claimed, request: { ...request, attempt: claimed.attempts }, signal } ),
+    } )
+    worker.start()
+  }
+
+  // real socket I/O has no event to wait on here, so turn the event loop until the database shows the result
+  async function until( condition: () => boolean ): Promise< void > {
+    for( let turn = 0; turn < 1_000 && !condition(); turn++ ) {
+      await new Promise< void >( ( resolve ) => setImmediate( resolve ) )
+    }
+
+    expect( condition() ).toBe( true )
+  }
+
+  function eventTypes(): string[] {
+    return ( temp.db.$client.prepare( 'SELECT type FROM events ORDER BY id' ).all() as { type: string }[] ).map( ( { type } ) => type )
+  }
+
+  afterEach( async () => {
+    await worker.stop()
+  } )
+
+  it( 'times out the silent call, re-queues the job, and completes it when the service answers on the retry', async () => {
+    const first = holdExchange()
+
+    startWorker()
+    await first
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { status: 'running', attempts: 1 } )
+
+    await vi.advanceTimersByTimeAsync( idleMs )
+    await until( () => readJob( temp.db, job.id ).status === 'queued' )
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { attempts: 1, lease_expires_at: null, finished_at: null } )
+    expect( eventTypes() ).not.toContain( 'JobFailed' )
+
+    // the retry backoff is real time, which fake timers don't move, so make the job ready and wake the worker
+    temp.db.$client.prepare( 'UPDATE jobs SET run_after = 0' ).run()
+    reply( ( { write, end } ) => {
+      write( usage() )
+      write( resultLine )
+      end()
+    } )
+    bus.publish( { id: 1, project_id: 'p1', type: 'JobClaimed', actor: null, payload: {}, created_at: 0 } )
+    await until( () => readJob( temp.db, job.id ).status === 'succeeded' )
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { attempts: 2, result: resultLine } )
+    expect( service.requests ).toHaveLength( 2 )
+    expect( llmCalls() ).toHaveLength( 1 )
+    expect( eventTypes() ).toContain( 'JobCompleted' )
+  } )
+
+  it( 'fails the job with the timeout label when the late call was the last attempt', async () => {
+    temp.db.$client.prepare( 'UPDATE jobs SET max_attempts = 1' ).run()
+
+    const first = holdExchange()
+
+    startWorker()
+    await first
+    await vi.advanceTimersByTimeAsync( idleMs )
+    await until( () => readJob( temp.db, job.id ).status === 'failed' )
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { error: 'idle timeout', attempts: 1 } )
+    expect( eventTypes() ).toContain( 'JobFailed' )
+  } )
+
+  it( 'fails the job at once, without retry, when the service sends a non-retryable error line', async () => {
+    reply( ( { write, end } ) => {
+      write( { type: 'error', code: 'unknown_kind', message: 'no such kind', retryable: false } )
+      end()
+    } )
+
+    startWorker()
+    await until( () => readJob( temp.db, job.id ).status === 'failed' )
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { error: 'unknown_kind: no such kind', attempts: 1 } )
   } )
 } )

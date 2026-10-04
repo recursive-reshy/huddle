@@ -126,8 +126,10 @@ export async function callStep( { db, bus, agentsUrl, stepIdleMs, stepTotalMs }:
       const { done, value } = await reader.read()
 
       if( done ) {
-        // a final line with no newline was cut off, so it is not read
-        return failed( 'stream ended without result', true )
+        const leftover = `${ buffer }${ decoder.decode() }`.trim()
+        const outcome = leftover === '' ? undefined : handleLine( leftover )
+
+        return outcome ?? failed( 'stream ended without result', true )
       }
 
       buffer += decoder.decode( value, { stream: true } )
