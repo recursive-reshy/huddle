@@ -84,3 +84,25 @@ describe( 'recentMessages', () => {
     expect( recentMessages ).toBe( 20 )
   } )
 } )
+
+describe( 'loadConfig agent service settings', () => {
+  it( 'defaults AGENTS_URL to http://localhost:8000', () => {
+    expect( loadConfig( env ).agentsUrl ).toBe( 'http://localhost:8000' )
+  } )
+
+  it( 'reads AGENTS_URL from the environment', () => {
+    expect( loadConfig( { ...env, AGENTS_URL: 'http://agents:8000' } ).agentsUrl ).toBe( 'http://agents:8000' )
+  } )
+
+  it( 'throws a ZodError when AGENTS_URL is not a URL', () => {
+    expect( () => loadConfig( { ...env, AGENTS_URL: 'agents' } ) ).toThrow( ZodError )
+  } )
+
+  it( 'aborts a step after 60 seconds with no line', () => {
+    expect( loadConfig( env ).stepIdleMs ).toBe( 60_000 )
+  } )
+
+  it( 'aborts a step after 10 minutes in total', () => {
+    expect( loadConfig( env ).stepTotalMs ).toBe( 600_000 )
+  } )
+} )

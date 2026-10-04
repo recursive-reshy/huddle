@@ -150,3 +150,4 @@ export const backups = sqliteTable( 'backups', {
 
 export type EventRow = typeof events.$inferSelect
 export type JobRow = typeof jobs.$inferSelect
+export type LlmCallRow = typeof llm_calls.$inferSelect

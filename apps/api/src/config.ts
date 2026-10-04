@@ -7,6 +7,7 @@ import type { JobKind } from '@my-team/shared'
 const Env = z.object( {
   DATABASE_FILE: z.string().min( 1 ),
   MIGRATIONS_DIR: z.string().min( 1 ),
+  AGENTS_URL: z.url().default( 'http://localhost:8000' ),
 } )
 
 const sonnet = 'claude-sonnet-5-5'
@@ -46,15 +47,21 @@ export interface Config {
   migrationsDir: string
   snapshotDir: string
   leaseMs: number
+  agentsUrl: string
+  stepIdleMs: number
+  stepTotalMs: number
 }
 
 export function loadConfig( env: NodeJS.ProcessEnv ): Config {
-  const { DATABASE_FILE, MIGRATIONS_DIR } = Env.parse( env )
+  const { DATABASE_FILE, MIGRATIONS_DIR, AGENTS_URL } = Env.parse( env )
 
   return {
     databaseFile: DATABASE_FILE,
     migrationsDir: MIGRATIONS_DIR,
     snapshotDir: path.join( path.dirname( DATABASE_FILE ), 'snapshots' ),
     leaseMs: 15 * 60 * 1000,
+    agentsUrl: AGENTS_URL,
+    stepIdleMs: 60_000,
+    stepTotalMs: 10 * 60 * 1000,
   }
 }
