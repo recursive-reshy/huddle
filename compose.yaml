@@ -1,0 +1,49 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    image: myteam-api
+    init: true
+    stop_grace_period: 15s
+    mem_limit: 384m
+    ports:
+      - "127.0.0.1:${API_PORT:-3000}:3000"
+    environment:
+      DATABASE_FILE: /data/huddle.db
+      MIGRATIONS_DIR: /app/db
+      AGENTS_URL: http://agents:8000
+      NODE_OPTIONS: --max-old-space-size=256
+    volumes:
+      - ${DATA_DIR:-/srv/myteam/data}:/data
+    depends_on:
+      - agents
+    healthcheck:
+      test: [ "CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((res) => process.exit(res.ok ? 0 : 1)).catch(() => process.exit(1))" ]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped
+
+  agents:
+    build:
+      context: ./services/agents
+    image: myteam-agents
+    init: true
+    stop_grace_period: 15s
+    mem_limit: 384m
+    env_file:
+      - path: ${AGENTS_ENV_FILE:-/srv/myteam/agents.env}
+        required: false
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+    restart: unless-stopped

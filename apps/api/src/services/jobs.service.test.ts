@@ -1,9 +1,11 @@
 // Packages
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Bus
 import { createBus, type Bus } from '#src/bus/bus.js'
 // DB
 import type { EventRow } from '#src/db/schema.js'
+// Repositories
+import { appendEvent } from '#src/repositories/events.repository.js'
 // Services
 import { claimJob, completeJob, recoverOrphanedJobs, reportJobFailure, sweepExpiredLeases } from './jobs.service.js'
 // Test support
@@ -91,6 +93,59 @@ describe( 'completeJob', () => {
     expect( done ).toBe( false )
     expect( readJob( temp.db, job.id ).status ).toBe( 'queued' )
     expect( storedEvents() ).toHaveLength( before )
+    expect( published ).toEqual( [] )
+  } )
+
+  it( 'runs apply inside the finishing transaction, and its events come before JobCompleted', () => {
+    insertJob( temp.db )
+    const job = claimJob( temp.db, bus, 1_000, leaseMs )!
+    published.length = 0
+    const seen: { inTransaction: boolean, status: string }[] = []
+
+    completeJob( temp.db, bus, {
+      job,
+      result: {},
+      now: 2_000,
+      apply: ( tx, events ) => {
+        seen.push( { inTransaction: temp.db.$client.inTransaction, status: readJob( temp.db, job.id ).status } )
+        events.push( appendEvent( tx, { project_id: job.project_id, type: 'MessageCompleted', actor: 'pm', payload: { message_id: 1 } } ) )
+      },
+    } )
+
+    expect( seen ).toEqual( [ { inTransaction: true, status: 'succeeded' } ] )
+    expect( storedEvents().map( ( { type } ) => type ) ).toEqual( [ 'JobClaimed', 'MessageCompleted', 'JobCompleted' ] )
+    expect( published.map( ( event ) => event.type ) ).toEqual( [ 'MessageCompleted', 'JobCompleted' ] )
+  } )
+
+  it( 'runs nothing when the finish is stale', () => {
+    insertJob( temp.db )
+    const job = claimJob( temp.db, bus, 1_000, leaseMs )!
+    sweepExpiredLeases( temp.db, bus, 1_000 + leaseMs )
+    const apply = vi.fn()
+
+    const done = completeJob( temp.db, bus, { job, result: {}, now: 2_000_000, apply } )
+
+    expect( done ).toBe( false )
+    expect( apply ).not.toHaveBeenCalled()
+  } )
+
+  it( 'rolls everything back and publishes nothing when apply throws, and the error reaches the caller', () => {
+    insertJob( temp.db )
+    const job = claimJob( temp.db, bus, 1_000, leaseMs )!
+    published.length = 0
+
+    expect( () => completeJob( temp.db, bus, {
+      job,
+      result: { done: true },
+      now: 2_000,
+      apply: ( tx, events ) => {
+        events.push( appendEvent( tx, { project_id: job.project_id, type: 'MessageCompleted', actor: 'pm', payload: { message_id: 1 } } ) )
+        throw new Error( 'disk full' )
+      },
+    } ) ).toThrow( 'disk full' )
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { status: 'running', result: null, finished_at: null } )
+    expect( storedEvents().map( ( { type } ) => type ) ).toEqual( [ 'JobClaimed' ] )
     expect( published ).toEqual( [] )
   } )
 } )

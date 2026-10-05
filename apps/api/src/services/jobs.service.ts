@@ -2,11 +2,13 @@
 import type { Bus } from '#src/bus/bus.js'
 // DB
 import type { Db } from '#src/db/connection.js'
-import type { JobRow } from '#src/db/schema.js'
+import type { EventRow, JobRow } from '#src/db/schema.js'
 import { writeTransaction, type Tx } from '#src/db/transaction.js'
 // Repositories
 import { appendEvent } from '#src/repositories/events.repository.js'
 import { claimNextJob, failJob, finishJob, listExpiredJobs, listRunningJobs, requeueJob } from '#src/repositories/jobs.repository.js'
+
+export type ApplyResult = ( tx: Tx, events: EventRow[] ) => void
 
 const retryBackoffMs = 10_000
 
@@ -33,11 +35,13 @@ export function claimJob( db: Db, bus: Bus, now: number, leaseMs: number ): JobR
   } )
 }
 
-export function completeJob( db: Db, bus: Bus, { job, result, now }: { job: JobRow, result: Record< string, unknown >, now: number } ): boolean {
+export function completeJob( db: Db, bus: Bus, { job, result, now, apply }: { job: JobRow, result: Record< string, unknown >, now: number, apply?: ApplyResult } ): boolean {
   return writeTransaction( db, bus, ( tx, events ) => {
     if( !finishJob( tx, { id: job.id, attempts: job.attempts, result, now } ) ) {
       return false
     }
+
+    apply?.( tx, events )
 
     events.push( appendEvent( tx, { project_id: job.project_id, type: 'JobCompleted', actor: job.agent, payload: { job_id: job.id } } ) )
 

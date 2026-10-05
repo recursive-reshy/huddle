@@ -4,13 +4,15 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createBus, type Bus } from '#src/bus/bus.js'
 // DB
 import type { EventRow } from '#src/db/schema.js'
+import { messages } from '#src/db/schema.js'
+import { writeTransaction } from '#src/db/transaction.js'
 // Errors
 import { ConflictError, NotFoundError } from '#src/errors.js'
 // Services
 import { createProject } from './projects.service.js'
-import { getThread, sendMessage } from './messages.service.js'
+import { getThread, listRecentChat, recordAgentReply, sendMessage } from './messages.service.js'
 // Test support
-import { readJob } from '#src/test-support/insert-job.js'
+import { insertJob, readJob } from '#src/test-support/insert-job.js'
 import { createTempDatabase, type TempDatabase } from '#src/test-support/temp-database.js'
 
 interface StoredEvent {
@@ -194,5 +196,54 @@ describe( 'getThread', () => {
 
     expect( getThread( temp.db, { projectId, agent: 'pm' } ) ).toEqual( [ first, second ] )
     expect( getThread( temp.db, { projectId, agent: 'sa' } ) ).toEqual( [] )
+  } )
+} )
+
+describe( 'listRecentChat', () => {
+  function seed( rows: { thread?: 'pm' | 'sa', kind?: 'chat' | 'discussion' | 'summary' | 'system', content: string }[] ): void {
+    temp.db.insert( messages ).values( rows.map( ( { thread = 'pm', kind = 'chat', content } ) => ( { project_id: projectId, thread, author: kind === 'chat' ? 'human' : 'pm', kind, content } ) ) ).run()
+  }
+
+  it( 'returns the last `limit` chat messages up to and including upToMessageId, oldest first', () => {
+    seed( [ 'a', 'b', 'c', 'd', 'e' ].map( ( content ) => ( { content } ) ) )
+
+    const recent = listRecentChat( temp.db, { projectId, thread: 'pm', upToMessageId: 4, limit: 3 } )
+
+    expect( recent.map( ( { content } ) => content ) ).toEqual( [ 'b', 'c', 'd' ] )
+  } )
+
+  it( 'never returns discussion, summary or system messages', () => {
+    seed( [
+      { content: 'chat' },
+      { content: 'discussion', kind: 'discussion' },
+      { content: 'summary', kind: 'summary' },
+      { content: 'system', kind: 'system' },
+      { content: 'other thread', thread: 'sa' },
+    ] )
+
+    const recent = listRecentChat( temp.db, { projectId, thread: 'pm', upToMessageId: 5, limit: 20 } )
+
+    expect( recent.map( ( { content } ) => content ) ).toEqual( [ 'chat' ] )
+  } )
+} )
+
+describe( 'recordAgentReply', () => {
+  it( 'inserts the pm message with the job_id and the content as given, and appends MessageCompleted for it', () => {
+    const job = insertJob( temp.db, { project_id: projectId } )
+    const content = '  Hello\n\nthere  '
+
+    const message = writeTransaction( temp.db, bus, ( tx, events ) => {
+      const recorded = recordAgentReply( tx, events, { job, content } )
+
+      expect( events ).toHaveLength( 1 )
+      expect( published ).toEqual( [] )
+
+      return recorded
+    } )
+
+    expect( message ).toEqual( { id: 1, project_id: projectId, thread: 'pm', author: 'pm', kind: 'chat', content, created_at: expect.any( Number ) } )
+    expect( temp.db.$client.prepare( 'SELECT job_id FROM messages' ).all() ).toEqual( [ { job_id: job.id } ] )
+    expect( published ).toHaveLength( 1 )
+    expect( published[ 0 ] ).toMatchObject( { type: 'MessageCompleted', project_id: projectId, actor: 'pm', payload: { message_id: message.id } } )
   } )
 } )

@@ -11,7 +11,10 @@ import { migrate } from '#src/db/migrate.js'
 // Logger
 import { logger } from '#src/logger.js'
 // Worker
+import { createDispatcher } from '#src/worker/dispatcher.js'
+import { createPmDiscoveryReplyHandler } from '#src/worker/handlers/pm-discovery-reply.handler.js'
 import { recoverAtBoot } from '#src/worker/recovery.js'
+import { callStep } from '#src/worker/step-client.js'
 import { createWorker } from '#src/worker/worker.js'
 
 const port = Number( process.env.PORT ?? 3000 )
@@ -28,12 +31,15 @@ const bus = createBus()
 
 recoverAtBoot( db, bus, Date.now() )
 
-// stub until the pm_discovery_reply handler (E9): every job fails as non-retryable, which shows the flow ran end to end
+const stepClientDeps = { db, bus, agentsUrl: config.agentsUrl, stepIdleMs: config.stepIdleMs, stepTotalMs: config.stepTotalMs }
+
 const worker = createWorker( {
   db,
   bus,
   leaseMs: config.leaseMs,
-  runStep: () => Promise.resolve( { ok: false, error: 'no handler', retryable: false } ),
+  runStep: createDispatcher( {
+    pm_discovery_reply: createPmDiscoveryReplyHandler( { db, call: ( input ) => callStep( stepClientDeps, input ) } ),
+  } ),
 } )
 
 worker.start()

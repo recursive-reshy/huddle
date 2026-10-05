@@ -6,12 +6,12 @@ import type { JobRow } from '#src/db/schema.js'
 // Logger
 import { logger } from '#src/logger.js'
 // Services
-import { claimJob, completeJob, reportJobFailure, sweepExpiredLeases } from '#src/services/jobs.service.js'
+import { claimJob, completeJob, reportJobFailure, sweepExpiredLeases, type ApplyResult } from '#src/services/jobs.service.js'
 
 export const fallbackTickMs = 5_000
 export const sweepIntervalMs = 60_000
 
-export type StepOutcome = { ok: true, result: Record< string, unknown > } | { ok: false, error: string, retryable: boolean }
+export type StepOutcome = { ok: true, result: Record< string, unknown >, apply?: ApplyResult } | { ok: false, error: string, retryable: boolean }
 
 export interface Worker {
   start(): void
@@ -51,7 +51,13 @@ export function createWorker( { db, bus, leaseMs, runStep }: WorkerOptions ): Wo
     }
 
     if( outcome.ok ) {
-      completeJob( db, bus, { job, result: outcome.result, now: Date.now() } )
+      try {
+        completeJob( db, bus, { job, result: outcome.result, now: Date.now(), apply: outcome.apply } )
+      } catch( error ) {
+        // the finish rolled back, so the job is still running: fail it rather than leave it for the lease sweep
+        logger.error( { err: error }, 'completion failed' )
+        reportJobFailure( db, bus, { job, error: `completion failed: ${ error instanceof Error ? error.message : String( error ) }`, retryable: false, now: Date.now() } )
+      }
     } else {
       reportJobFailure( db, bus, { job, error: outcome.error, retryable: outcome.retryable, now: Date.now() } )
     }

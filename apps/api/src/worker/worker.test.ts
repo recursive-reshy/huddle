@@ -3,7 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Bus
 import { createBus, type Bus } from '#src/bus/bus.js'
 // DB
-import type { EventRow, JobRow } from '#src/db/schema.js'
+import { messages, type EventRow, type JobRow } from '#src/db/schema.js'
+// Repositories
+import { appendEvent } from '#src/repositories/events.repository.js'
 // Logger
 import { logger } from '#src/logger.js'
 // Worker
@@ -276,6 +278,82 @@ describe( 'step outcomes', () => {
 
     expect( eventTypes() ).not.toContain( 'JobCompleted' )
     expect( readJob( temp.db, job.id ).result ).toBeNull()
+  } )
+} )
+
+describe( 'completion with apply', () => {
+  function addMarker( job: JobRow ): StepOutcome {
+    return {
+      ok: true,
+      result: { done: true },
+      apply: ( tx, events ) => {
+        tx.insert( messages ).values( { project_id: job.project_id, thread: 'pm', author: 'pm', kind: 'chat', content: 'Hi', job_id: job.id } ).run()
+        events.push( appendEvent( tx, { project_id: job.project_id, type: 'MessageCompleted', actor: 'pm', payload: { message_id: 1 } } ) )
+      },
+    }
+  }
+
+  function messageCount(): number {
+    return ( temp.db.$client.prepare( 'SELECT COUNT(*) AS count FROM messages' ).get() as { count: number } ).count
+  }
+
+  it( 'runs apply in the same transaction as the fenced finish', async () => {
+    const job = insertJob( temp.db )
+
+    startWorker( ( claimed ) => Promise.resolve( addMarker( claimed ) ) )
+    await settle()
+
+    expect( readJob( temp.db, job.id ) ).toMatchObject( { status: 'succeeded', result: { done: true } } )
+    expect( messageCount() ).toBe( 1 )
+    expect( eventTypes() ).toEqual( [ 'JobClaimed', 'MessageCompleted', 'JobCompleted' ] )
+  } )
+
+  it( 'runs apply for nothing when the lease was swept meanwhile', async () => {
+    const job = insertJob( temp.db )
+    const gate = defer()
+
+    startWorker( ( claimed, signal ) => claimed.attempts === 1 ? gate.promise : untilAborted( signal ) )
+    await settle()
+    await vi.advanceTimersByTimeAsync( leaseMs )
+
+    const apply = vi.fn()
+
+    gate.resolve( { ok: true, result: {}, apply } )
+    await settle()
+
+    expect( apply ).not.toHaveBeenCalled()
+    expect( readJob( temp.db, job.id ).result ).toBeNull()
+  } )
+
+  it( 'fails the job as non-retryable "completion failed: <message>", logs it and writes nothing, when apply throws', async () => {
+    const logged = vi.spyOn( logger, 'error' ).mockImplementation( () => undefined )
+    const broken = insertJob( temp.db )
+    const next = insertJob( temp.db )
+
+    startWorker( ( claimed ) => {
+      if( claimed.id !== broken.id ) {
+        return Promise.resolve( succeeded )
+      }
+
+      return Promise.resolve( {
+        ok: true,
+        result: { done: true },
+        apply: ( tx, events ) => {
+          tx.insert( messages ).values( { project_id: claimed.project_id, thread: 'pm', author: 'pm', kind: 'chat', content: 'Half', job_id: claimed.id } ).run()
+          events.push( appendEvent( tx, { project_id: claimed.project_id, type: 'MessageCompleted', actor: 'pm', payload: { message_id: 1 } } ) )
+          throw new Error( 'disk full' )
+        },
+      } )
+    } )
+    await settle()
+
+    expect( readJob( temp.db, broken.id ) ).toMatchObject( { status: 'failed', attempts: 1, error: 'completion failed: disk full', result: null } )
+    expect( messageCount() ).toBe( 0 )
+    expect( eventTypes() ).toEqual( [ 'JobClaimed', 'JobFailed', 'JobClaimed', 'JobCompleted' ] )
+    expect( logged ).toHaveBeenCalledWith( { err: expect.objectContaining( { message: 'disk full' } ) }, 'completion failed' )
+    expect( readJob( temp.db, next.id ).status ).toBe( 'succeeded' )
+
+    logged.mockRestore()
   } )
 } )
 

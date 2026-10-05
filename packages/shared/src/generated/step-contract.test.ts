@@ -111,4 +111,10 @@ describe( 'stepRequest', () => {
 
     expect( stepRequest.safeParse( withoutMayAsk ).success ).toBe( false )
   } )
+
+  it( 'rejects task.may_ask: null', () => {
+    const nullMayAsk = { ...request, context: { ...context, task: { notes: '', mode: 'normal', may_ask: null } } }
+
+    expect( stepRequest.safeParse( nullMayAsk ).success ).toBe( false )
+  } )
 } )

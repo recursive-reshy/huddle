@@ -1,0 +1,12 @@
+.git
+.vscode
+.data
+.env*
+**/.env*
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+**/data
+**/.pytest_cache
+docs
+services

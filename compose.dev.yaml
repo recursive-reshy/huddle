@@ -1,0 +1,9 @@
+# Use explicitly: docker compose -f compose.yaml -f compose.dev.yaml up --build
+services:
+  api:
+    volumes:
+      - ./.data/compose:/data
+
+  agents:
+    environment:
+      AGENTS_FAKE: "1"

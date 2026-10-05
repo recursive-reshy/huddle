@@ -80,6 +80,57 @@
       "title": "DeltaLine",
       "type": "object"
     },
+    "DraftArtifactOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "draft": {
+          "items": {
+            "$ref": "#/$defs/DraftSection"
+          },
+          "minItems": 1,
+          "title": "Draft",
+          "type": "array"
+        },
+        "output_type": {
+          "const": "draft_artifact",
+          "title": "Output Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "output_type",
+        "draft"
+      ],
+      "title": "DraftArtifactOutput",
+      "type": "object"
+    },
+    "DraftSection": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "minLength": 1,
+          "title": "Content",
+          "type": "string"
+        },
+        "section_key": {
+          "minLength": 1,
+          "title": "Section Key",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "section_key",
+        "title",
+        "content"
+      ],
+      "title": "DraftSection",
+      "type": "object"
+    },
     "ErrorCode": {
       "enum": [
         "invalid_request",
@@ -92,6 +143,7 @@
         "empty_reply",
         "truncated",
         "refused",
+        "validation_failed",
         "internal_error"
       ],
       "title": "ErrorCode",
@@ -254,13 +306,17 @@
         "output": {
           "discriminator": {
             "mapping": {
-              "chat_reply": "#/$defs/ChatReplyOutput"
+              "chat_reply": "#/$defs/ChatReplyOutput",
+              "draft_artifact": "#/$defs/DraftArtifactOutput"
             },
             "propertyName": "output_type"
           },
           "oneOf": [
             {
               "$ref": "#/$defs/ChatReplyOutput"
+            },
+            {
+              "$ref": "#/$defs/DraftArtifactOutput"
             }
           ],
           "title": "Output"
