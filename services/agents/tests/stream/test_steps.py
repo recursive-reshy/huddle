@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from pydantic import TypeAdapter
 
 from agents.contract.lines import DeltaLine, ResultLine, StepLine, UsageLine
+from agents.contract.outputs import ChatReplyOutput
 from agents.main import create_app
 from agents.roles.registry import registry
 from agents.runtime.fake import fixtures_directory
@@ -112,6 +113,7 @@ def test_fake_deltas_joined_equal_result_content( client: TestClient ) -> None:
     result = lines[ -1 ]
 
     assert isinstance( result, ResultLine )
+    assert isinstance( result.output, ChatReplyOutput )
     assert joined_text == result.output.content
 
 def test_fake_usage_line_is_zero_cost( client: TestClient ) -> None:

@@ -11,4 +11,5 @@ class ErrorCode( StrEnum ):
     EMPTY_REPLY = "empty_reply"
     TRUNCATED = "truncated"
     REFUSED = "refused"
+    VALIDATION_FAILED = "validation_failed"
     INTERNAL_ERROR = "internal_error"
