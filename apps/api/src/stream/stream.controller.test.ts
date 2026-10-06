@@ -2,7 +2,7 @@
 import type { AddressInfo } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Shared
-import { storedEvent } from '@my-team/shared'
+import { storedEvent } from '@huddle/shared'
 // App
 import { createApp } from '#src/app.js'
 // Bus

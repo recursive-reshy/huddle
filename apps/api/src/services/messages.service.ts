@@ -1,5 +1,5 @@
 // Shared
-import type { AgentId, MessageResponse, ThreadId } from '@my-team/shared'
+import type { AgentId, MessageResponse, ThreadId } from '@huddle/shared'
 // Bus
 import type { Bus } from '#src/bus/bus.js'
 // DB

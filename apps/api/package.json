@@ -25,7 +25,7 @@
   "packageManager": "pnpm@11.24.0",
   "type": "module",
   "dependencies": {
-    "@my-team/shared": "workspace:*",
+    "@huddle/shared": "workspace:*",
     "better-sqlite3": "^13.0.3",
     "drizzle-orm": "^0.45.3",
     "express": "^5.2.1",

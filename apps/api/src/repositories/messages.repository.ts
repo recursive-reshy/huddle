@@ -1,7 +1,7 @@
 // Packages
 import { and, asc, desc, eq, lte } from 'drizzle-orm'
 // Shared
-import { messageResponse, type MessageKind, type MessageResponse, type ThreadId } from '@my-team/shared'
+import { messageResponse, type MessageKind, type MessageResponse, type ThreadId } from '@huddle/shared'
 // DB
 import type { Db } from '#src/db/connection.js'
 import type { Tx } from '#src/db/transaction.js'

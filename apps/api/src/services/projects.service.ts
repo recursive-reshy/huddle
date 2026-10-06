@@ -1,7 +1,7 @@
 // Packages
 import { monotonicFactory } from 'ulid'
 // Shared
-import type { ProjectResponse } from '@my-team/shared'
+import type { ProjectResponse } from '@huddle/shared'
 // Bus
 import type { Bus } from '#src/bus/bus.js'
 // DB

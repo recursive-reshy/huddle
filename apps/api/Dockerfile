@@ -25,7 +25,7 @@ RUN --mount=type=cache,target=/root/.local/share/pnpm/store \
 COPY packages/shared/ packages/shared/
 COPY apps/api/ apps/api/
 
-RUN pnpm --filter @my-team/shared build \
+RUN pnpm --filter @huddle/shared build \
     && pnpm --filter huddle-api build
 
 FROM base AS deps

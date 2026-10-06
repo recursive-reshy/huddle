@@ -1,7 +1,7 @@
 // Express
 import type { Request, Response } from 'express'
 // Shared
-import { postMessageBody, threadId } from '@my-team/shared'
+import { postMessageBody, threadId } from '@huddle/shared'
 // Current user
 import { currentUser } from '#src/current-user.js'
 // Services

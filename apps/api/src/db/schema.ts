@@ -2,7 +2,7 @@
 import { sql } from 'drizzle-orm'
 import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 // Shared
-import { jobKinds, projectStates } from '@my-team/shared'
+import { jobKinds, projectStates } from '@huddle/shared'
 
 const epochMs = sql`(CAST((julianday('now') - 2440587.5) * 86400000 AS INTEGER))`
 

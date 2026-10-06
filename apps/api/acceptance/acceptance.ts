@@ -13,7 +13,7 @@ import {
   threadEnvelope,
   type DeltaEvent,
   type StoredEvent,
-} from '@my-team/shared'
+} from '@huddle/shared'
 
 // Milestone 1.1 acceptance (TRD §14): runs the real stack in Docker Compose, in fake mode, on its own project, port and data directory.
 // Run it with `pnpm acceptance`; add `--keep` to leave the stack and its data up for debugging.

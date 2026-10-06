@@ -1,7 +1,7 @@
 // Packages
 import { describe, expect, it, vi } from 'vitest'
 // Shared
-import type { DeltaEvent } from '@my-team/shared'
+import type { DeltaEvent } from '@huddle/shared'
 // Bus
 import { createBus } from './bus.js'
 // DB

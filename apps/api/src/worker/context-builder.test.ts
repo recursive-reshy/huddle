@@ -1,7 +1,7 @@
 // Packages
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 // Shared
-import { stepRequest } from '@my-team/shared'
+import { stepRequest } from '@huddle/shared'
 // DB
 import { messages } from '#src/db/schema.js'
 // Errors

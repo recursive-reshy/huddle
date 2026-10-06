@@ -1,7 +1,7 @@
 // Express
 import type { Request } from 'express'
 // Shared
-import type { AgentId } from '@my-team/shared'
+import type { AgentId } from '@huddle/shared'
 
 // the one place that decides who is acting; this single-user app always answers the human, so the request is not read yet
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

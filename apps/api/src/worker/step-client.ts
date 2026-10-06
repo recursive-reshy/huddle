@@ -1,7 +1,7 @@
 // Packages
 import type { ZodError } from 'zod'
 // Shared
-import { stepLine, stepRequest, type StepRequest } from '@my-team/shared'
+import { stepLine, stepRequest, type StepRequest } from '@huddle/shared'
 // Bus
 import type { Bus } from '#src/bus/bus.js'
 // Config

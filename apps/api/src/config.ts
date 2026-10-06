@@ -2,7 +2,7 @@
 import path from 'node:path'
 import { z } from 'zod'
 // Shared
-import type { JobKind } from '@my-team/shared'
+import type { JobKind } from '@huddle/shared'
 
 const Env = z.object( {
   DATABASE_FILE: z.string().min( 1 ),

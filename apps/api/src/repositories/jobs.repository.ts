@@ -1,7 +1,7 @@
 // Packages
 import { and, asc, eq, inArray, lte, sql } from 'drizzle-orm'
 // Shared
-import type { JobKind } from '@my-team/shared'
+import type { JobKind } from '@huddle/shared'
 // DB
 import type { Tx } from '#src/db/transaction.js'
 import { jobs, type JobRow } from '#src/db/schema.js'

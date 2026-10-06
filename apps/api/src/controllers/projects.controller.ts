@@ -1,7 +1,7 @@
 // Express
 import type { Request, Response } from 'express'
 // Shared
-import { createProjectBody } from '@my-team/shared'
+import { createProjectBody } from '@huddle/shared'
 // Services
 import { createProject, getProject, listAllProjects } from '#src/services/projects.service.js'
 

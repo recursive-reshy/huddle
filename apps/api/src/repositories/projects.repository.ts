@@ -1,7 +1,7 @@
 // Packages
 import { desc, eq, sql } from 'drizzle-orm'
 // Shared
-import type { ProjectResponse } from '@my-team/shared'
+import type { ProjectResponse } from '@huddle/shared'
 // DB
 import type { Db } from '#src/db/connection.js'
 import type { Tx } from '#src/db/transaction.js'

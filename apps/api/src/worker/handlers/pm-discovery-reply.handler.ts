@@ -1,7 +1,7 @@
 // Packages
 import { z } from 'zod'
 // Shared
-import { jobKindOutputType, type StepRequest } from '@my-team/shared'
+import { jobKindOutputType, type StepRequest } from '@huddle/shared'
 // Config
 import { models } from '#src/config.js'
 // DB

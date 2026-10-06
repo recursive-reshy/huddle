@@ -1,7 +1,7 @@
 // Packages
 import { z } from 'zod'
 // Shared
-import type { StepRequest } from '@my-team/shared'
+import type { StepRequest } from '@huddle/shared'
 // Config
 import { recentMessages } from '#src/config.js'
 // DB

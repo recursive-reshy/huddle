@@ -1,7 +1,7 @@
 // Packages
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 // Shared
-import { errorResponse, projectEnvelope, projectsEnvelope } from '@my-team/shared'
+import { errorResponse, projectEnvelope, projectsEnvelope } from '@huddle/shared'
 // App
 import { createApp } from '#src/app.js'
 // Bus

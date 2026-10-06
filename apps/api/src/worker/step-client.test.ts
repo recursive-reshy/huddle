@@ -1,7 +1,7 @@
 // Packages
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 // Shared
-import { stepRequest, type StepRequest } from '@my-team/shared'
+import { stepRequest, type StepRequest } from '@huddle/shared'
 // Bus
 import { createBus, type Bus } from '#src/bus/bus.js'
 // DB

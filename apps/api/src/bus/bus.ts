@@ -1,5 +1,5 @@
 // Shared
-import type { DeltaEvent } from '@my-team/shared'
+import type { DeltaEvent } from '@huddle/shared'
 // DB
 import type { EventRow } from '#src/db/schema.js'
 // Logger

@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest'
 import { ZodError } from 'zod'
 // Shared
-import { jobKinds } from '@my-team/shared'
+import { jobKinds } from '@huddle/shared'
 // Config
 import { loadConfig, models, prices, recentMessages } from './config.js'
 
