@@ -1,0 +1,75 @@
+{
+  "output_type": "draft_artifact",
+  "draft": [
+    {
+      "section_key": "summary",
+      "title": "Summary",
+      "content": "Placeholder text for the summary section of the fake brief."
+    },
+    {
+      "section_key": "problem",
+      "title": "Problem and trigger",
+      "content": "Placeholder text for the problem and trigger section of the fake brief."
+    },
+    {
+      "section_key": "users_and_environment",
+      "title": "Users and environment",
+      "content": "Placeholder text for the users and environment section of the fake brief."
+    },
+    {
+      "section_key": "workflow",
+      "title": "Workflow",
+      "content": "Placeholder text for the workflow section of the fake brief."
+    },
+    {
+      "section_key": "existing_assets",
+      "title": "What already exists",
+      "content": "Placeholder text for the what already exists section of the fake brief."
+    },
+    {
+      "section_key": "goals",
+      "title": "Goals",
+      "content": "Placeholder text for the goals section of the fake brief."
+    },
+    {
+      "section_key": "scope_v1",
+      "title": "Scope for v1",
+      "content": "Placeholder text for the scope for v1 section of the fake brief."
+    },
+    {
+      "section_key": "scope_later",
+      "title": "Later and never",
+      "content": "Placeholder text for the later and never section of the fake brief."
+    },
+    {
+      "section_key": "constraints_and_priorities",
+      "title": "Constraints and priorities",
+      "content": "Placeholder text for the constraints and priorities section of the fake brief."
+    },
+    {
+      "section_key": "success_criteria",
+      "title": "Success criteria",
+      "content": "Placeholder text for the success criteria section of the fake brief."
+    },
+    {
+      "section_key": "decisions",
+      "title": "Decisions made",
+      "content": "Placeholder text for the decisions made section of the fake brief."
+    },
+    {
+      "section_key": "assumptions",
+      "title": "Assumptions to confirm",
+      "content": "Placeholder text for the assumptions to confirm section of the fake brief."
+    },
+    {
+      "section_key": "open_questions_sa",
+      "title": "Open questions for the SA",
+      "content": "Placeholder text for the open questions for the sa section of the fake brief."
+    },
+    {
+      "section_key": "open_questions_naresh",
+      "title": "Open questions for Naresh",
+      "content": "Placeholder text for the open questions for naresh section of the fake brief."
+    }
+  ]
+}

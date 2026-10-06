@@ -141,6 +141,6 @@ def test_fake_result_hashes_the_fixture_file( client: TestClient ) -> None:
 def test_every_registered_pair_has_a_fixture_that_validates( agent: str, kind: str ) -> None:
     fixture = Path( fixtures_directory / agent / f"{kind}.json" )
 
-    output = registry[ ( agent, kind ) ].model_validate_json( fixture.read_bytes() )
+    output = registry[ ( agent, kind ) ].output_type.model_validate_json( fixture.read_bytes() )
 
     assert output is not None

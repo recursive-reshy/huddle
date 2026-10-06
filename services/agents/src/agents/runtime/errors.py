@@ -1,8 +1,18 @@
 import httpx2
 from anthropic import APIError, APIStatusError
+from pydantic import BaseModel, ValidationError
 
 from agents.contract.errors import ErrorCode
 from agents.contract.lines import ErrorLine
+
+detail_limit = 500
+
+class AnthropicErrorDetail( BaseModel ):
+    type: str | None = None
+    message: str | None = None
+
+class AnthropicErrorBody( BaseModel ):
+    error: AnthropicErrorDetail
 
 def map_exception( exception: Exception ) -> ErrorLine:
     if isinstance( exception, APIStatusError ):
@@ -21,10 +31,21 @@ def map_exception( exception: Exception ) -> ErrorLine:
         else:
             code, retryable = ErrorCode.INTERNAL_ERROR, False
 
+        message = f"Anthropic returned HTTP {status}"
+        try:
+            error_body = AnthropicErrorBody.model_validate( exception.body )
+        except ValidationError:
+            error_body = None
+
+        if error_body is not None and error_body.error.message:
+            error_type = error_body.error.type
+            detail = f"{error_type}: {error_body.error.message}" if error_type else error_body.error.message
+            message = f"{message}: {detail[ :detail_limit ]}"
+
         return ErrorLine(
             type = "error",
             code = code,
-            message = f"Anthropic returned HTTP {status}",
+            message = message,
             retryable = retryable
         )
 

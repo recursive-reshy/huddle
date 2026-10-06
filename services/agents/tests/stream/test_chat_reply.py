@@ -64,6 +64,7 @@ def build_stubbed_app(
     prompt_path = tmp_path / "pm" / "pm_discovery_reply.md"
     prompt_path.parent.mkdir( parents = True )
     prompt_path.write_bytes( prompt_bytes )
+    ( tmp_path / "pm" / "pm_draft_brief.md" ).write_bytes( prompt_bytes )
 
     recorded_requests: list[ httpx2.Request ] = []
 
@@ -247,7 +248,7 @@ def test_non_retryable_anthropic_rejections_become_one_non_retryable_error_line(
     assert lines[ 0 ][ "code" ] == expected_code
     assert lines[ 0 ][ "retryable" ] is False
     assert f"HTTP {status}" in str( lines[ 0 ][ "message" ] )
-    assert "request content echo" not in str( lines[ 0 ][ "message" ] )
+    assert "api_error: request content echo" in str( lines[ 0 ][ "message" ] )
     assert_ends_with_one_terminal_line( lines )
 
 def test_stream_ending_with_max_tokens_gets_deltas_one_usage_and_a_truncated_error(
@@ -446,3 +447,15 @@ def test_unmapped_anthropic_status_becomes_a_logged_non_retryable_internal_error
     assert lines[ 0 ][ "retryable" ] is False
     assert "HTTP 409" in str( lines[ 0 ][ "message" ] )
     assert any( record.exc_info is not None for record in caplog.records )
+
+def test_upstream_rejection_is_logged_as_a_warning_with_the_job_id_and_anthropics_detail(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture
+) -> None:
+    stubbed_app = build_stubbed_app( monkeypatch, tmp_path, sse_body, make_status_response( 400 ) )
+
+    stubbed_app.client.post( "/v1/steps", content = json.dumps( valid_request ) )
+
+    warnings = [ record.getMessage() for record in caplog.records if record.levelname == "WARNING" ]
+    assert warnings == [ "Job 7: Anthropic returned HTTP 400: api_error: request content echo" ]
