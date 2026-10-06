@@ -1,0 +1,14 @@
+# Used only by `pnpm acceptance` (apps/api/acceptance): -p huddle-acceptance -f compose.yaml -f compose.acceptance.yaml, with API_PORT=3100
+# restart is off so a killed api stays down until the script starts it; the image names keep the dev images untouched
+services:
+  api:
+    image: myteam-api-acceptance
+    restart: "no"
+    volumes:
+      - ./.data/acceptance:/data
+
+  agents:
+    image: myteam-agents-acceptance
+    restart: "no"
+    environment:
+      AGENTS_FAKE: "1"

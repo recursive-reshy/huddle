@@ -5,6 +5,7 @@
   "main": "dist/src/server.js",
   "scripts": {
     "start": "node --env-file=.env dist/src/server.js",
+    "acceptance": "tsx --conditions=development acceptance/acceptance.ts",
     "dev": "tsx watch --conditions=development --env-file=.env src/server.ts",
     "build": "tsc --build tsconfig.build.json",
     "test": "vitest run && node --test \"../../db/*.test.mjs\"",
