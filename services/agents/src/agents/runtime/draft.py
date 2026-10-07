@@ -74,7 +74,8 @@ async def stream_draft_artifact(
     system: list[ TextBlockParam ],
     turns: list[ MessageParam ],
     section_keys: tuple[ str, ... ],
-    heartbeat_seconds: float
+    heartbeat_seconds: float,
+    first_tool_error: str | None = None
 ) -> AsyncIterator[ StepLine ]:
     tool: ToolParam = {
         "name": "submit_draft",
@@ -170,6 +171,8 @@ async def stream_draft_artifact(
             follow_up_turns.append( { "role": "user", "content": [ { "type": "text", "text": MISSING_TOOL_CALL_NOTICE } ] } )
         else:
             validation = validate_draft( tool_use.input, section_keys )
+            if attempt_number == 1 and first_tool_error is not None:
+                validation = DraftValidation( outcome = DraftOutcome.INVALID, errors = [ first_tool_error ] )
 
             if validation.outcome == DraftOutcome.VALID:
                 yield ResultLine(

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from agents.contract.context import MessageKind
-from evals.cases import CaseParseError, parse_case
+from evals.cases import SERVICE_DIR, CaseParseError, find_case_paths, parse_case
 
 def write_case( tmp_path: Path, name: str, text: str, kind: str = "pm_discovery_reply" ) -> Path:
     folder = tmp_path / "pm" / kind
@@ -174,3 +174,75 @@ def test_invalid_check_is_a_parse_error_naming_file_and_line( tmp_path: Path, ki
 
     assert str( error.value ).startswith( f"{path}:11: " )
     assert expected_message in str( error.value )
+
+def test_include_with_a_slash_resolves_from_the_service_folder_and_comes_first( tmp_path: Path ) -> None:
+    fixture = tmp_path / "evals" / "fixtures" / "x.md"
+    fixture.parent.mkdir( parents = True )
+    fixture.write_text( "# Fixture\n\nIgnored text.\n\n## Input\nH: From the fixture.\nPM: Fixture reply.\n" )
+    path = write_case(
+        tmp_path,
+        "01-path-include.md",
+        "# Case 01: path include\n"
+        "\n"
+        "## Input\n"
+        "Includes: evals/fixtures/x.md\n"
+        "H: Own message.\n"
+        "\n"
+        "## Pass\n"
+        "- Anything.\n"
+    )
+
+    case = parse_case( path, tmp_path )
+
+    assert [ message.content for message in case.stages[ 0 ].messages ] == [
+        "From the fixture.",
+        "Fixture reply.",
+        "Own message."
+    ]
+
+def test_include_of_a_missing_path_names_both_files( tmp_path: Path ) -> None:
+    path = write_case(
+        tmp_path,
+        "01-missing.md",
+        "# Case 01: missing include\n\n## Input\nIncludes: evals/fixtures/nope.md\nH: Hi.\n\n## Pass\n- Anything.\n"
+    )
+
+    with pytest.raises( CaseParseError ) as exception_info:
+        parse_case( path, tmp_path )
+
+    message = str( exception_info.value )
+    assert str( path ) in message
+    assert str( tmp_path / "evals" / "fixtures" / "nope.md" ) in message
+
+def test_manual_case_yields_its_reason_and_no_stages_without_validating_other_sections( tmp_path: Path ) -> None:
+    path = write_case(
+        tmp_path,
+        "10-manual.md",
+        "# Case 10: replay\n"
+        "\n"
+        "## Manual\n"
+        "Multi-turn replay:\n"
+        "each reply feeds the next turn.\n"
+        "\n"
+        "## Input\n"
+        "The `H:` turns only, in order.\n"
+        "\n"
+        "## Pass (per reply)\n"
+        "- One or two questions.\n"
+    )
+
+    case = parse_case( path, tmp_path )
+
+    assert case.manual_reason == "Multi-turn replay:\neach reply feeds the next turn."
+    assert case.stages == []
+    assert ( case.number, case.title ) == ( 10, "replay" )
+
+def test_every_real_case_file_parses_and_discovery_case_10_is_manual() -> None:
+    case_paths = find_case_paths( SERVICE_DIR / "evals" / "cases" )
+
+    cases = [ parse_case( case_path ) for case_path in case_paths ]
+
+    assert len( cases ) == 28
+    manual_cases = [ case for case in cases if case.manual_reason is not None ]
+    assert [ ( case.kind, case.number ) for case in manual_cases ] == [ ( "pm_discovery_reply", 10 ) ]
+    assert all( case.stages for case in cases if case.manual_reason is None )

@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from agents.config import Settings
 from agents.contract.errors import ErrorCode
-from agents.contract.lines import ErrorLine
+from agents.contract.lines import ErrorLine, StepLine
 from agents.contract.request import StepRequest
 from agents.roles.registry import registry
 from agents.runtime.claude import stream_chat_reply
@@ -20,6 +20,70 @@ from agents.runtime.prompts import load_prompt
 from agents.runtime.stream import to_ndjson
 
 logger = logging.getLogger( __name__ )
+
+async def stream_step(
+    step_request: StepRequest,
+    settings: Settings,
+    client: AsyncAnthropic | None,
+    first_tool_error: str | None = None
+) -> AsyncIterator[ StepLine ]:
+    try:
+        if settings.is_fake:
+            for line in stream_fake_step( step_request ):
+                yield line
+
+            return
+
+        if client is None:
+            raise ValueError( "No Anthropic client is configured" )
+
+        prompt = load_prompt( settings.prompts_dir, step_request.agent, step_request.kind )
+        section_keys = registry[ ( step_request.agent, step_request.kind ) ].section_keys
+
+        if section_keys is None:
+            turns_result = build_turns( step_request.context.messages )
+        else:
+            turns_result = build_source_turn( step_request.context )
+
+        if turns_result.reason is not None:
+            yield ErrorLine(
+                type = "error",
+                code = ErrorCode.INVALID_REQUEST,
+                message = turns_result.reason,
+                retryable = False
+            )
+            return
+
+        system = build_system( prompt.body, step_request.context.project )
+
+        if section_keys is None:
+            lines = stream_chat_reply(
+                client,
+                step_request.model,
+                prompt,
+                system,
+                turns_result.turns
+            )
+        else:
+            lines = stream_draft_artifact(
+                client,
+                step_request.model,
+                prompt,
+                system,
+                turns_result.turns,
+                section_keys,
+                settings.heartbeat_seconds,
+                first_tool_error
+            )
+
+        async for line in lines:
+            if isinstance( line, ErrorLine ) and line.code == ErrorCode.UPSTREAM_REJECTED:
+                logger.warning( "Job %s: %s", step_request.job_id, line.message )
+
+            yield line
+    except Exception as exception:
+        logger.exception( "Unexpected error in step for job %s", step_request.job_id )
+        yield map_exception( exception )
 
 def create_app( settings: Settings | None = None ) -> FastAPI:
     if settings is None:
@@ -42,61 +106,12 @@ def create_app( settings: Settings | None = None ) -> FastAPI:
         return { "status": "ok" }
 
     async def run_step( step_request: StepRequest ) -> AsyncIterator[ bytes ]:
-        try:
-            if settings.is_fake:
-                for line in stream_fake_step( step_request ):
-                    yield to_ndjson( line )
-
-                return
-
-            prompt = load_prompt( settings.prompts_dir, step_request.agent, step_request.kind )
-            section_keys = registry[ ( step_request.agent, step_request.kind ) ].section_keys
-
-            if section_keys is None:
-                turns_result = build_turns( step_request.context.messages )
-            else:
-                turns_result = build_source_turn( step_request.context )
-
-            if turns_result.reason is not None:
-                yield to_ndjson(
-                    ErrorLine(
-                        type = "error",
-                        code = ErrorCode.INVALID_REQUEST,
-                        message = turns_result.reason,
-                        retryable = False
-                    )
-                )
-                return
-
-            system = build_system( prompt.body, step_request.context.project )
-
-            if section_keys is None:
-                lines = stream_chat_reply(
-                    app.state.anthropic_client,
-                    step_request.model,
-                    prompt,
-                    system,
-                    turns_result.turns
-                )
-            else:
-                lines = stream_draft_artifact(
-                    app.state.anthropic_client,
-                    step_request.model,
-                    prompt,
-                    system,
-                    turns_result.turns,
-                    section_keys,
-                    settings.heartbeat_seconds
-                )
-
-            async for line in lines:
-                if isinstance( line, ErrorLine ) and line.code == ErrorCode.UPSTREAM_REJECTED:
-                    logger.warning( "Job %s: %s", step_request.job_id, line.message )
-
-                yield to_ndjson( line )
-        except Exception as exception:
-            logger.exception( "Unexpected error in step for job %s", step_request.job_id )
-            yield to_ndjson( map_exception( exception ) )
+        async for line in stream_step(
+            step_request,
+            settings,
+            getattr( app.state, "anthropic_client", None )
+        ):
+            yield to_ndjson( line )
 
     @app.post( "/v1/steps" )
     async def steps( request: Request ) -> StreamingResponse:

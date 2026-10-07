@@ -1,0 +1,7 @@
+# USD per million tokens, copied from Express's price table.
+# One entry per model, named exactly as passed to --model. A model with a blank value here is refused.
+[models."<model>"]
+input = ""
+output = ""
+cache_read = ""
+cache_write = ""

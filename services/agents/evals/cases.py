@@ -14,6 +14,8 @@ MULTI_STAGE_PATTERN = re.compile( r"stage (\d+) (input|pass|fail|checks)" )
 MESSAGE_PATTERN = re.compile( r"(?:\d+\.\s+)?(H|PM):(.*)" )
 STAGE_INCLUDE_PATTERN = re.compile( r"stage (\d+)" )
 INJECT_PATTERN = re.compile( r"- first_tool_error:(.*)" )
+CASE_FILE_PATTERN = re.compile( r"\d+-.+\.md" )
+SERVICE_DIR = Path( __file__ ).parents[ 1 ]
 
 class CaseParseError( Exception ):
     pass
@@ -42,6 +44,10 @@ class Case( BaseModel ):
     title: str
     stages: list[ Stage ]
     first_tool_error: str | None = None
+    manual_reason: str | None = None
+
+def find_case_paths( folder: Path ) -> list[ Path ]:
+    return sorted( path for path in folder.rglob( "*.md" ) if CASE_FILE_PATTERN.fullmatch( path.name ) )
 
 def split_sections( lines: list[ str ] ) -> list[ CaseSection ]:
     sections: list[ CaseSection ] = []
@@ -61,7 +67,8 @@ def read_input(
     section: CaseSection,
     stage_inputs: dict[ int, CaseSection ],
     stage_chain: tuple[ int, ... ],
-    file_chain: tuple[ Path, ... ]
+    file_chain: tuple[ Path, ... ],
+    service_dir: Path
 ) -> list[ ThreadMessage ]:
     included_messages: list[ ThreadMessage ] = []
     authors: list[ str ] = []
@@ -92,14 +99,18 @@ def read_input(
                     raise CaseParseError( f"{where}: Includes: stage {stage_number}, but {path.name} has no stage {stage_number} input" )
 
                 included_messages.extend(
-                    read_input( path, stage_inputs[ stage_number ], stage_inputs, ( *stage_chain, stage_number ), file_chain )
+                    read_input( path, stage_inputs[ stage_number ], stage_inputs, ( *stage_chain, stage_number ), file_chain, service_dir )
                 )
                 continue
 
-            if not include_text.endswith( ".md" ) or Path( include_text ).name != include_text:
-                raise CaseParseError( f"{where}: Includes needs 'stage N' or a .md file in the same folder, got {include_text!r}" )
+            is_service_path = "/" in include_text
+            if not include_text.endswith( ".md" ) or ( not is_service_path and Path( include_text ).name != include_text ):
+                raise CaseParseError(
+                    f"{where}: Includes needs 'stage N', a .md file in the same folder, "
+                    f"or a .md path from the service folder, got {include_text!r}"
+                )
 
-            target = path.parent / include_text
+            target = ( service_dir if is_service_path else path.parent ) / include_text
             if target.resolve() in file_chain:
                 file_names = " -> ".join( file.name for file in ( *file_chain, target.resolve() ) )
                 raise CaseParseError( f"{where}: include cycle: {file_names} ({path} includes {target})" )
@@ -111,7 +122,7 @@ def read_input(
             if target_input is None:
                 raise CaseParseError( f"{where}: {path} includes {target}, which has no single-stage ## Input" )
 
-            included_messages.extend( read_input( target, target_input, {}, (), ( *file_chain, target.resolve() ) ) )
+            included_messages.extend( read_input( target, target_input, {}, (), ( *file_chain, target.resolve() ), service_dir ) )
             continue
 
         if bodies:
@@ -167,7 +178,7 @@ def read_checks( path: Path, section: CaseSection, entry: RegistryEntry ) -> lis
 
     return checks
 
-def parse_case( path: Path ) -> Case:
+def parse_case( path: Path, service_dir: Path = SERVICE_DIR ) -> Case:
     agent = path.parent.parent.name
     kind = path.parent.name
     entry = registry.get( ( agent, kind ) )
@@ -180,6 +191,18 @@ def parse_case( path: Path ) -> Case:
         raise CaseParseError( f"{path}:1: the first line must be '# Case NN: <title>'" )
 
     sections = split_sections( lines )
+    manual_section = next( ( section for section in sections if section.key == "manual" ), None )
+    if manual_section is not None:
+        return Case(
+            path = path,
+            agent = agent,
+            kind = kind,
+            number = int( title_match.group( 1 ) ),
+            title = title_match.group( 2 ),
+            stages = [],
+            manual_reason = "\n".join( source_line.text for source_line in manual_section.lines ).strip()
+        )
+
     stage_sections: dict[ int, dict[ str, CaseSection ] ] = {}
     inject_sections: list[ CaseSection ] = []
     has_single_stage = False
@@ -240,7 +263,7 @@ def parse_case( path: Path ) -> Case:
             if required_part not in parts:
                 raise CaseParseError( f"{path}:{first_line}: stage {stage_number} has no {required_part} section" )
 
-        messages = read_input( path, parts[ "input" ], stage_inputs, ( stage_number, ), ( path.resolve(), ) )
+        messages = read_input( path, parts[ "input" ], stage_inputs, ( stage_number, ), ( path.resolve(), ), service_dir )
         own_checks = read_checks( path, parts[ "checks" ], entry ) if "checks" in parts else []
         stages.append(
             Stage(
