@@ -11,3 +11,9 @@ H: Maybe later. Not now.
 - Decisions include "Naresh: Postgres database (technical)".
 - SQLite appears only under `open_questions_sa`, worded as a question.
 - SQLite is not under decisions, assumptions or any other section as a recommendation.
+
+## Checks
+- section decisions contains: Postgres
+- section decisions contains: (technical)
+- section decisions not_contains: SQLite
+- section assumptions not_contains: SQLite

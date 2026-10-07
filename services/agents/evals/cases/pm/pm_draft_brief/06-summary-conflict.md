@@ -17,3 +17,8 @@ H: Entering orders and a daily list.
 - Users: the owner and his sister.
 - "Owner only" is not stated as current.
 - The web-on-a-laptop item is marked "(assumed)" and listed under assumptions.
+
+## Checks
+- section users_and_environment contains: sister
+- section assumptions contains: laptop
+- section decisions not_contains: laptop

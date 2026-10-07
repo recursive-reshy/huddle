@@ -9,3 +9,7 @@ H: No idea, that's for the SA.
 - No pushback and no explanation of options.
 - Notes it as an open question for the SA (in words, not a formal list).
 - The next question is a product question, such as who uses it or how returns are tracked today.
+
+## Checks
+- max_words: 200
+- max_questions: 2

@@ -13,3 +13,8 @@ H: Actually, my assistant needs to see bookings too, so two people. And make the
 - Users: the owner and the assistant.
 - Budget: $15 a month.
 - No mention of "only I" or $25 as a current position, and no mention that anything changed.
+
+## Checks
+- contains: $15
+- not_contains: $25
+- section users_and_environment contains: assistant

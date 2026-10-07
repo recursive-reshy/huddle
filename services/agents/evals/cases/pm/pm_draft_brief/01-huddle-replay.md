@@ -1,7 +1,7 @@
-# Case 01: My Team replay
+# Case 01: Huddle replay
 
 ## Input
-The whole PM chat that produced the My Team PRD, both sides, from `evals/fixtures/my-team-pm-chat.md`.
+Includes: evals/fixtures/huddle-pm-chat.md
 
 ## Pass
 - The general criteria in README.md.
@@ -9,3 +9,9 @@ The whole PM chat that produced the My Team PRD, both sides, from `evals/fixture
 - Framework choice and reuse of the agentic-patterns repo are under `open_questions_sa`, because Naresh deferred them to the SA.
 - Budget, tolerances (downtime, data loss, response time) and existing assets are not in this thread. They say "Not covered in discovery." and are listed under `open_questions_naresh`.
 - Nothing from later in the project (Cloudflare, SQLite, Lightsail) appears.
+
+## Checks
+- not_contains: Cloudflare
+- not_contains: SQLite
+- not_contains: Lightsail
+- section constraints_and_priorities contains: Not covered in discovery.

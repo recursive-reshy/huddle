@@ -7,3 +7,7 @@ H: I want a tool to track my client work.
 - One or two questions.
 - The first question is about the problem and who has it.
 - No solution, feature list or technology proposed.
+
+## Checks
+- max_words: 200
+- max_questions: 2

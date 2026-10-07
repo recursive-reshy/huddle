@@ -12,3 +12,7 @@ H: A paper ledger, one line per rental. The assistant forgets to fill it in.
 ## Pass
 - Does not ask about budget or data loss.
 - Asks about something not yet covered, such as what already exists, how it should work once built, v1 scope or success criteria.
+
+## Checks
+- max_words: 200
+- max_questions: 2

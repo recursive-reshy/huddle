@@ -13,5 +13,14 @@ H: $20 a month. A day of downtime is fine. Losing last week's requests is fine.
 
 ## Pass
 - The general criteria in README.md.
-- Nothing from My Team carried over: no agents, roles, handoffs, PRD or TRD.
+- Nothing from Huddle carried over: no agents, roles, handoffs, PRD or TRD.
 - Workflow has Today (calls and messages, leads lost on site) and Desired (form, email, callback within a day).
+
+## Checks
+- section workflow contains: Today
+- section workflow contains: Desired
+- section constraints_and_priorities contains: $20
+- not_contains: Huddle
+- not_contains: PRD
+- not_contains: TRD
+- not_contains: handoff

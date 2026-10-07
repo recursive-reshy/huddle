@@ -7,3 +7,6 @@ Checked by hand until the B2 harness exists. `H:` is a message from Naresh (auth
 - Fidelity: each decision traces to a message from Naresh, no assumed item appears as decided, and no fact, number or name is invented.
 - Scope: the brief adds no technical choice of its own.
 - Length: about 800 to 1,500 words, with no section repeating another beyond the one-line lists. Thin threads will be shorter.
+
+## Checks
+- max_words: 2000

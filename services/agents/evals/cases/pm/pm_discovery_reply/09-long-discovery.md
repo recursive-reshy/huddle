@@ -2,15 +2,10 @@
 
 Built for a window of 20 messages. Rebuild it if `context.recentMessages` changes.
 
-The thread has 26 messages. The window shows messages 7 to 26. Message 7 is a `PM:` message, so the service adds the placeholder turn before it. The summary at message 12 is the 6th oldest message in the window. The budget, problem and users appear only in messages 1 to 6 and in the summary.
+The full thread has 26 messages. The window shows messages 7 to 26, so the first line below is the placeholder the service adds. Messages 1 to 6 are out of view. They held the problem (double-booked sessions at a photo studio), the users (owner, one assistant, clients) and the $30 a month budget. Only the checkpoint summary at message 12 carries them. That summary is the 6th oldest message in the window, so it is in the older third and a new summary is due.
 
-## Full thread
-1. H: I run a small photo studio and want an online booking tool.
-2. PM: What's the problem, and why now?
-3. H: Clients book by email and I double-book. It cost me two sessions last month.
-4. PM: Who uses it?
-5. H: Me, one assistant, and clients booking.
-6. H: Budget is $30 a month.
+## Input
+H: [Earlier messages are not shown.]
 7. PM: Defaults I'd assume: web only, English only, clients don't need an account. All fine?
 8. H: All fine except clients do need an account.
 9. PM: How does a booking travel today?
@@ -36,15 +31,19 @@ The thread has 26 messages. The window shows messages 7 to 26. Message 7 is a `P
 25. PM: I'll assume reminders go out 24 hours before each session. OK?
 26. H: Sure, whatever.
 
-## Input
-The window: messages 7 to 26, with `[Earlier messages are not shown.]` as the first line (added by the service).
-
 ## Pass
-- Gives an updated checkpoint summary with the four headings, because its latest summary is in the older third of the window.
-- The summary keeps everything from message 12, including the $30/month budget, and adds the later decisions.
+- Gives an updated checkpoint summary with the four headings.
+- The summary keeps everything from message 12, including the $30 a month budget, and adds the later decisions.
 - "Sure, whatever" is not a confirmation: the 24-hour reminders stay under Assumed.
 - Asks nothing about the problem, users or budget.
 
 ## Fail
 - A summary that drops the budget or the users.
 - Reminders listed under Decided.
+
+## Checks
+- contains: Decided
+- contains: Assumed
+- contains: Open questions for the SA
+- contains: Still to cover
+- contains: $30

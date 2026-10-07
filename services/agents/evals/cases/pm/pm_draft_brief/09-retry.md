@@ -1,9 +1,10 @@
 # Case 09: retry (needs the B2 harness)
 
 ## Input
-The thread from `02-defaults.md`. On the first call, the harness returns this error as the tool result, whatever the model produced:
+Includes: 02-defaults.md
 
-`Missing section_key: scope_later`
+## Inject
+- first_tool_error: Missing section_key: scope_later
 
 ## Pass
 - The second call resends the complete brief, with all 14 keys.
@@ -13,3 +14,6 @@ The thread from `02-defaults.md`. On the first call, the harness returns this er
 ## Fail
 - A second call that sends only the missing section.
 - Text outside the tool call.
+
+## Checks
+- calls: 2

@@ -10,3 +10,7 @@ H: $10 a month.
 ## Pass
 - Decisions include "Public sign-up: rejected" and invite-only access.
 - The rejected option is not under assumptions and is not omitted.
+
+## Checks
+- section decisions contains: invite
+- contains: $10

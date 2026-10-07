@@ -12,3 +12,9 @@ H: Word of mouth only.
 - The gaps are listed under `open_questions_naresh`.
 - Nothing is padded or invented.
 - The summary is still written from what the thread contains.
+
+## Checks
+- section scope_later equals: Not covered in discovery.
+- section success_criteria contains: Not covered in discovery.
+- section constraints_and_priorities contains: Not covered in discovery.
+- section summary not_contains: Not covered

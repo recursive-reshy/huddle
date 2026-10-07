@@ -17,3 +17,7 @@ H: No lost bookings for a month.
 
 ## Fail
 - Suggests "Draft brief" while any of those four is still unasked.
+
+## Checks
+- max_words: 200
+- max_questions: 2

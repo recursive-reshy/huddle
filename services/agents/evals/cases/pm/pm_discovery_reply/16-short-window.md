@@ -21,3 +21,10 @@
 
 ## Fail
 - Carries on with a question and no summary.
+
+## Checks
+- contains: Decided
+- contains: Assumed
+- contains: Open questions for the SA
+- contains: Still to cover
+- contains: $15

@@ -14,3 +14,11 @@ H: I can see unpaid work in one list. Budget is $20 a month.
 - Assumptions include the 14-day email reminder and the monthly summary email.
 - The two reminder items are not under decisions, and are marked "(assumed)" where they appear in sections 2 to 10.
 - Sections discovery did not cover say "Not covered in discovery." and are listed under `open_questions_naresh`.
+
+## Checks
+- contains: $20
+- section assumptions contains: monthly
+- section decisions not_contains: monthly
+- section assumptions contains: 14
+- section decisions not_contains: 14
+- section scope_later contains: Not covered in discovery.

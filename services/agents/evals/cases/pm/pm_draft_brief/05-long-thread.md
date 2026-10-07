@@ -43,3 +43,10 @@ Problem and budget appear only in the first six messages.
 - The Monday weekly email is under assumptions, not decisions ("Sure, whatever" does not confirm).
 - Hosting and storage are under `open_questions_sa`.
 - Later and never: parent portal later, grades and attendance billing never.
+
+## Checks
+- contains: $40
+- section assumptions contains: Monday
+- section decisions not_contains: Monday
+- section scope_later contains: parent
+- section scope_later contains: grade

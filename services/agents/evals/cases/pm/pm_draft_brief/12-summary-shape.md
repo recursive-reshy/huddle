@@ -1,7 +1,7 @@
 # Case 12: summary shape
 
 ## Input
-The thread from `02-defaults.md`.
+Includes: 02-defaults.md
 
 ## Pass
 - `summary` is exactly three lines: what is being built, for whom, and what finishing v1 looks like.

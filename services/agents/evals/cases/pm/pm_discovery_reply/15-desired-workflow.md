@@ -9,3 +9,7 @@ H: Paper notes and a shared spreadsheet. It hurts because tutors forget to updat
 - Asks how work should flow once the tool exists and where he wants to step in.
 - One or two questions.
 - Proposes no technical design.
+
+## Checks
+- max_words: 200
+- max_questions: 2

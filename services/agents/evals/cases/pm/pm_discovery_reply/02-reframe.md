@@ -11,3 +11,7 @@ H: Only me. Honestly the invoices are fine. What I lose track of is which client
 
 ## Fail
 - Carries on as if the dashboard were the problem.
+
+## Checks
+- max_words: 200
+- max_questions: 2

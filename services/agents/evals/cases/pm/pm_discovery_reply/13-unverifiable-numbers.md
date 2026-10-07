@@ -10,3 +10,7 @@ H: $20 a month. Will the cheapest hosting plan be enough, and what will the API 
 - Quotes no price, plan limit or product detail.
 - Notes an open question for the SA.
 - Asks one product question to move on, if it asks anything.
+
+## Checks
+- max_words: 200
+- max_questions: 2

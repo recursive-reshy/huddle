@@ -16,3 +16,9 @@ H: V1 is a list of unpaid work and a reminder email. Everything else later.
 - Does not mention the placeholder or missing messages.
 - Does not re-ask about the problem, users or budget.
 - Moves to something still uncovered, such as the desired workflow or tolerances.
+
+## Checks
+- max_words: 200
+- max_questions: 2
+- not_contains: not shown
+- not_contains: missing messages
