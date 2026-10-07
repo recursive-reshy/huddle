@@ -1,9 +1,17 @@
+import { defineConfig } from 'eslint/config'
 import tseslint from 'typescript-eslint'
 import stylistic from '@stylistic/eslint-plugin'
 
-export default tseslint.config(
+export default defineConfig(
   { ignores: [ 'dist', 'node_modules', 'src/generated' ] },
-  ...tseslint.configs.recommended,
+  tseslint.configs.recommended,
+  {
+    languageOptions: {
+      parserOptions: {
+        tsconfigRootDir: import.meta.dirname,
+      },
+    },
+  },
   {
     files: [ '**/*.ts' ],
     plugins: { '@stylistic': stylistic },
