@@ -10,8 +10,9 @@ Used by:
 
 Note: the first `H:` message is a role-setup instruction, not a discovery answer. In the app the role prompt does that job, so trim it if it gets in the way of the replay.
 
----
+Everything above the `## Input` heading is ignored by the eval harness.
 
+## Input
 H: Think of yourself as the person engaging with a client (product manager or business analyst). 
 First, understand my needs by asking targeted questions. 
 
