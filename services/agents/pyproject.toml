@@ -31,7 +31,7 @@ markers = [ "docker: builds and runs the container image (run with -m docker)" ]
 
 [tool.pyright]
 typeCheckingMode = "strict"
-include = [ "src", "tests" ]
+include = [ "src", "tests", "evals" ]
 venvPath = "."
 venv = ".venv"
 
