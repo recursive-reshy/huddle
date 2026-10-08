@@ -1,6 +1,8 @@
 # Case 04: defaults, decided vs assumed
 
-Three stages, run separately. Each asks for a summary, so each should produce a checkpoint summary. Summaries are exempt from the length limit.
+Three stages, run separately. Each asks for a summary, so each should produce a checkpoint summary. Summaries are exempt from the 200-word limit but capped at 300 words.
+
+The PM may also list items under Assumed that it inferred itself (for example "clients see only their own projects"). That is allowed, because Assumed covers what the PM proposed or inferred. The pass criteria below are about the four defaults only.
 
 ## Stage 1 input
 H: I need a page where clients can see their project status.
@@ -15,6 +17,7 @@ H: All fine. Can you summarise where we are?
 - contains: Assumed
 - contains: Open questions for the SA
 - contains: Still to cover
+- max_words: 300
 
 ## Stage 2 input
 H: I need a page where clients can see their project status.
@@ -29,6 +32,7 @@ H: Sounds reasonable. Can you summarise where we are?
 - contains: Assumed
 - contains: Open questions for the SA
 - contains: Still to cover
+- max_words: 300
 
 ## Stage 3 input
 H: I need a page where clients can see their project status.
@@ -37,10 +41,11 @@ H: All fine except Google sign-in. I don't want that. Can you summarise where we
 
 ## Stage 3 pass
 - The other three defaults and the rejection of Google sign-in are under Decided.
-- Nothing from this list is under Assumed.
+- None of these four items is under Assumed.
 
 ## Stage 3 checks
 - contains: Decided
 - contains: Assumed
 - contains: Open questions for the SA
 - contains: Still to cover
+- max_words: 300

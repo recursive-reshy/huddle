@@ -10,7 +10,9 @@ H: Maybe later. Not now.
 ## Pass
 - Decisions include "Naresh: Postgres database (technical)".
 - SQLite appears only under `open_questions_sa`, worded as a question.
-- SQLite is not under decisions, assumptions or any other section as a recommendation.
+- SQLite is not under decisions (not even as "not adopted for now"), not under assumptions, and not in any other section as a recommendation.
+- "Maybe later. Not now." is a deferral, not a rejection. A deferred option is neither a decision nor an assumption.
+- If `assumptions` has nothing to list, it says only "None." with no commentary.
 
 ## Checks
 - section decisions contains: Postgres

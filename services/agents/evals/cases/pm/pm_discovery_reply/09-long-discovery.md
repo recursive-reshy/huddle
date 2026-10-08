@@ -4,6 +4,8 @@ Built for a window of 20 messages. Rebuild it if `context.recentMessages` change
 
 The full thread has 26 messages. The window shows messages 7 to 26, so the first line below is the placeholder the service adds. Messages 1 to 6 are out of view. They held the problem (double-booked sessions at a photo studio), the users (owner, one assistant, clients) and the $30 a month budget. Only the checkpoint summary at message 12 carries them. That summary is the 6th oldest message in the window, so it is in the older third and a new summary is due.
 
+Naresh gives a reason for accepting the data loss (message 19), so the PM has no risk left to raise.
+
 ## Input
 H: [Earlier messages are not shown.]
 7. PM: Defaults I'd assume: web only, English only, clients don't need an account. All fine?
@@ -22,7 +24,7 @@ H: [Earlier messages are not shown.]
 16. PM: What's in v1, and what's later?
 17. H: Slot booking and confirmation emails. Packages and gift cards later.
 18. PM: How much downtime and data loss can you accept?
-19. H: A day of downtime is fine. Losing a week of bookings is fine.
+19. H: A day of downtime is fine. I can rebuild bookings from my email, so losing a week of them is fine.
 20. PM: If cost and speed conflict?
 21. H: Cost wins.
 22. PM: How will you judge v1 worked?
@@ -47,3 +49,4 @@ H: [Earlier messages are not shown.]
 - contains: Open questions for the SA
 - contains: Still to cover
 - contains: $30
+- max_words: 300

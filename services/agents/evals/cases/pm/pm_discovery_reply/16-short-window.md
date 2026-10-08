@@ -28,3 +28,4 @@
 - contains: Open questions for the SA
 - contains: Still to cover
 - contains: $15
+- max_words: 300

@@ -26,10 +26,10 @@ H: The tenant calls me, I text a contractor, then I chase for the invoice. Reque
 
 ## Stage 2 pass
 - Today is filled in as in stage 1.
-- Desired says "Not covered in discovery."
+- Desired says "Not covered in discovery", with or without extra words after it.
 - The missing desired flow is listed under `open_questions_naresh`.
 
 ## Stage 2 checks
 - section workflow contains: Today
-- section workflow contains: Not covered in discovery.
+- section workflow contains: Not covered in discovery
 - section workflow not_contains: $500

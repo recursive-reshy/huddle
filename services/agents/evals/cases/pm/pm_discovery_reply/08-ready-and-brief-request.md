@@ -2,6 +2,8 @@
 
 Two stages, run separately. The thread has a checkpoint summary at message 10, so no new summary is due.
 
+Naresh gives a reason for accepting the data loss ("I can rebuild lost bookings from WhatsApp"), so the PM has no risk left to raise. This case tests readiness, not risk handling.
+
 ## Stage 1 input
 H: I run a pottery studio. I want a page where students book classes themselves.
 PM: What goes wrong today, and why now?
@@ -11,7 +13,7 @@ H: A Google Sheet with the class list and a simple website with no booking. Stud
 PM: Who uses it, and what's in v1? Defaults I'd assume: students book on phones, two staff view the schedule, English only. All fine?
 H: All fine. V1 is booking and a payment link. Memberships and gift vouchers later.
 PM: Other goals? And tolerances: downtime, data loss, budget? I'd also assume a 24-hour cancellation window.
-H: I also want to learn how to build this properly. A few hours of downtime is fine, losing a week of bookings is fine. Budget $30 a month. If cost and speed conflict, cost wins.
+H: I also want to learn how to build this properly. A few hours of downtime is fine. I can rebuild lost bookings from WhatsApp, so losing a week of them is fine. Budget $30 a month. If cost and speed conflict, cost wins.
 PM: Where we are.
    Decided: problem is double-booked classes and messy refunds; students book and pay themselves; students book on phones, two staff view the schedule, English only; v1 is booking and a payment link; memberships and gift vouchers later; learning is a secondary goal; a few hours of downtime and a week of lost bookings are fine; budget $30 a month; cost wins over speed; Naresh steps in only for refunds and cancellations.
    Assumed: 24-hour cancellation window.
