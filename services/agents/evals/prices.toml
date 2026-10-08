@@ -1,7 +1,7 @@
 # USD per million tokens, copied from Express's price table.
 # One entry per model, named exactly as passed to --model. A model with a blank value here is refused.
 [models."claude-sonnet-5-5"]
-input = 0.0
-output = 0.0
-cache_read = 0.0
-cache_write = 0.0
+input = 2.0
+output = 10.0
+cache_read = 0.20
+cache_write = 2.50
