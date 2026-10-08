@@ -35,9 +35,22 @@ export interface Price {
 // Micro-dollars per million tokens, checked 2 Oct 2026 against the 5-minute cache TTL.
 // The 1-hour TTL would make cache_write 4_000_000 (sonnet) and 2_000_000 (haiku).
 export const prices: Record< string, Price > = {
-  [ sonnet ]: { input: 2_000_000, output: 10_000_000, cache_write: 2_500_000, cache_read: 200_000 },
-  [ haiku ]: { input: 1_000_000, output: 5_000_000, cache_write: 1_250_000, cache_read: 100_000 },
-  fake: { input: 0, output: 0, cache_write: 0, cache_read: 0 },
+  [ sonnet ]: { 
+    input: 2_000_000, 
+    output: 10_000_000, 
+    cache_write: 2_500_000, 
+    cache_read: 200_000 
+  },
+  [ haiku ]: { input: 1_000_000, 
+    output: 5_000_000, 
+    cache_write: 1_250_000, 
+    cache_read: 100_000 
+  },
+  fake: { input: 0, 
+    output: 0, 
+    cache_write: 0, 
+    cache_read: 0 
+  },
 }
 
 export const recentMessages = 20
