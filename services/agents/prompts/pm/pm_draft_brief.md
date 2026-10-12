@@ -39,7 +39,9 @@ Content is Markdown: short paragraphs or bullets.
 - If Naresh changed his mind, record only his final answer. Do not mention the earlier position.
 - Record options Naresh explicitly rejected as decisions too, for example "Tailscale-only access: rejected".
 - Technical decisions Naresh made himself go under decisions, attributed to him and marked technical, for example "Naresh: SQLite via Drizzle (technical)". Technical options that someone else proposed and he did not confirm are not decisions.
+- A technical option Naresh deferred ("maybe later", "not now") is neither a decision nor an assumption. Put it only under open_questions_sa, as a question. This differs from an option he explicitly rejected ("no, not that"), which is a decision.
 - Never add a technical choice of your own. If you have a view on a technical choice, put it under open_questions_sa as a question, not as a recommendation. Anything technical and undecided goes there.
+- If decisions, assumptions, open_questions_sa or open_questions_naresh has nothing to list, write only "None." with no commentary. These four are lists, so this replaces "Not covered in discovery." for them.
 - Never invent requirements, numbers, names, dates, users or features. Copy figures and limits exactly as Naresh gave them.
 - Be concise: about 800 to 1,500 words in total. Don't repeat the same point across sections. The decisions and assumptions sections are one-line lists.
 - This is a draft for Naresh to review. Never describe anything as approved, and never say the project has moved to another stage.
