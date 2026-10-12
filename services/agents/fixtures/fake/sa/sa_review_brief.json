@@ -1,0 +1,9 @@
+{
+  "output_type": "review",
+  "notes": "## Review of the brief\n\nThe brief is clear on the problem and the goals. Three points need an answer before the PRD can be written.\n\n- **Scope:** v1 scope is listed, but nothing says which of the workflows must work offline.\n- **Users:** the brief names the users but not how many people will use the app at the same time.\n- **Existing assets:** the spreadsheet the team uses today is mentioned, but not whether its data must be imported.",
+  "questions": [
+    { "question": "Which workflows must keep working without a network connection?" },
+    { "question": "How many people will use the app at the same time, at most?" },
+    { "question": "Does the data in the current spreadsheet need to be imported into v1?" }
+  ]
+}

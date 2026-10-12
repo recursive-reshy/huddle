@@ -121,12 +121,13 @@ def build_source_turn( context: StepContext ) -> TurnsResult:
     if context.task.notes != "":
         volatile_parts.append( f"<notes>\n{context.task.notes}\n</notes>" )
 
-    if not volatile_parts:
+    if volatile_parts:
+        blocks.append( { "type": "text", "text": "\n\n".join( volatile_parts ) } )
+
+    if not blocks:
         return TurnsResult(
             outcome = TurnsOutcome.FAILED,
-            reason = "Context has no questions, messages or notes: nothing to draft from"
+            reason = "Context has no artifacts, decisions, draft, questions, messages or notes: nothing to draft from"
         )
-
-    blocks.append( { "type": "text", "text": "\n\n".join( volatile_parts ) } )
 
     return TurnsResult( outcome = TurnsOutcome.BUILT, turns = [ { "role": "user", "content": blocks } ] )

@@ -1,4 +1,5 @@
 import hashlib
+import re
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -9,10 +10,19 @@ from agents.roles.registry import registry
 
 fixtures_directory = Path( __file__ ).parents[ 3 ] / "fixtures" / "fake"
 delta_size = 20
+variant_pattern = re.compile( r"\[([A-Za-z0-9_-]+)\]" )
 
 def stream_fake_step( step_request: StepRequest ) -> Iterator[ StepLine ]:
     output_type = registry[ ( step_request.agent, step_request.kind ) ].output_type
-    fixture_bytes = ( fixtures_directory / step_request.agent / f"{step_request.kind}.json" ).read_bytes()
+    fixture_path = fixtures_directory / step_request.agent / f"{step_request.kind}.json"
+
+    variant_match = variant_pattern.search( step_request.context.project.name )
+    if variant_match is not None:
+        variant_path = fixture_path.with_name( f"{step_request.kind}.{variant_match.group( 1 )}.json" )
+        if variant_path.exists():
+            fixture_path = variant_path
+
+    fixture_bytes = fixture_path.read_bytes()
     output = output_type.model_validate_json( fixture_bytes )
 
     if isinstance( output, ChatReplyOutput ):

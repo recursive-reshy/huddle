@@ -3,15 +3,17 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from agents.contract.context import MessageKind, ThreadMessage
+from agents.contract.context import ArtifactKind, MessageKind, Section, ThreadMessage
 from agents.roles.registry import RegistryEntry, registry
+from agents.roles.sections import BRIEF_SECTION_KEYS
 from evals.checks import Check, parse_check
 
 TITLE_PATTERN = re.compile( r"# Case (\d+): (.+)" )
 HEADING_PATTERN = re.compile( r"##\s+(.+?)\s*" )
-SINGLE_STAGE_PATTERN = re.compile( r"(input|pass|fail|checks)" )
-MULTI_STAGE_PATTERN = re.compile( r"stage (\d+) (input|pass|fail|checks)" )
+SINGLE_STAGE_PATTERN = re.compile( r"(input|approved brief|pass|fail|checks)" )
+MULTI_STAGE_PATTERN = re.compile( r"stage (\d+) (input|approved brief|pass|fail|checks)" )
 MESSAGE_PATTERN = re.compile( r"(?:\d+\.\s+)?(H|PM):(.*)" )
+BRIEF_SUBSECTION_PATTERN = re.compile( r"###\s+(\w+):\s*(.+?)\s*" )
 STAGE_INCLUDE_PATTERN = re.compile( r"stage (\d+)" )
 INJECT_PATTERN = re.compile( r"- first_tool_error:(.*)" )
 CASE_FILE_PATTERN = re.compile( r"\d+-.+\.md" )
@@ -32,6 +34,7 @@ class CaseSection( BaseModel ):
 class Stage( BaseModel ):
     number: int
     messages: list[ ThreadMessage ]
+    artifacts: list[ Section ] = []
     pass_criteria: list[ str ]
     fail_criteria: list[ str ]
     checks: list[ Check ]
@@ -61,6 +64,98 @@ def split_sections( lines: list[ str ] ) -> list[ CaseSection ]:
             sections[ -1 ].lines.append( SourceLine( number = line_number, text = text ) )
 
     return sections
+
+def resolve_include_file(
+    where: str,
+    include_text: str,
+    path: Path,
+    service_dir: Path,
+    file_chain: tuple[ Path, ... ]
+) -> Path:
+    is_service_path = "/" in include_text
+    if not include_text.endswith( ".md" ) or ( not is_service_path and Path( include_text ).name != include_text ):
+        raise CaseParseError(
+            f"{where}: Includes needs 'stage N', a .md file in the same folder, "
+            f"or a .md path from the service folder, got {include_text!r}"
+        )
+
+    target = ( service_dir if is_service_path else path.parent ) / include_text
+    if target.resolve() in file_chain:
+        file_names = " -> ".join( file.name for file in ( *file_chain, target.resolve() ) )
+        raise CaseParseError( f"{where}: include cycle: {file_names} ({path} includes {target})" )
+    if not target.is_file():
+        raise CaseParseError( f"{where}: {path} includes {target}, which does not exist" )
+
+    return target
+
+def read_approved_brief(
+    path: Path,
+    section: CaseSection,
+    file_chain: tuple[ Path, ... ],
+    service_dir: Path
+) -> list[ Section ]:
+    included_sections: list[ Section ] = []
+    keys: list[ str ] = []
+    titles: list[ str ] = []
+    start_lines: list[ int ] = []
+    bodies: list[ list[ str ] ] = []
+    has_content = False
+
+    for source_line in section.lines:
+        subsection_match = BRIEF_SUBSECTION_PATTERN.fullmatch( source_line.text )
+        if subsection_match is not None:
+            key, title = subsection_match.groups()
+            if key not in BRIEF_SECTION_KEYS:
+                raise CaseParseError( f"{path}:{source_line.number}: unknown brief section key {key!r}" )
+
+            keys.append( key )
+            titles.append( title )
+            start_lines.append( source_line.number )
+            bodies.append( [] )
+            has_content = True
+            continue
+
+        if source_line.text.startswith( "Includes:" ):
+            where = f"{path}:{source_line.number}"
+            if has_content:
+                raise CaseParseError( f"{where}: Includes must be the first line of the approved brief" )
+
+            include_text = source_line.text.removeprefix( "Includes:" ).strip()
+            target = resolve_include_file( where, include_text, path, service_dir, file_chain )
+            target_sections = split_sections( target.read_text().splitlines() )
+            target_brief = next( ( target_section for target_section in target_sections if target_section.key == "approved brief" ), None )
+            if target_brief is None:
+                raise CaseParseError( f"{where}: {path} includes {target}, which has no single-stage ## Approved brief" )
+
+            included_sections.extend( read_approved_brief( target, target_brief, ( *file_chain, target.resolve() ), service_dir ) )
+            has_content = True
+            continue
+
+        if bodies:
+            bodies[ -1 ].append( source_line.text )
+            continue
+
+        if source_line.text.strip() != "":
+            raise CaseParseError( f"{path}:{source_line.number}: text before the first ### section" )
+
+    own_sections: list[ Section ] = []
+    for key, title, start_line, body in zip( keys, titles, start_lines, bodies ):
+        content = "\n".join( body ).strip()
+        if content == "":
+            raise CaseParseError( f"{path}:{start_line}: empty brief section {key!r}" )
+
+        own_sections.append(
+            Section(
+                artifact_id = "eval-brief",
+                version = 1,
+                kind = ArtifactKind.BRIEF,
+                section_key = key,
+                title = title,
+                content = content
+            )
+        )
+
+    return [ *included_sections, *own_sections ]
 
 def read_input(
     path: Path,
@@ -103,20 +198,7 @@ def read_input(
                 )
                 continue
 
-            is_service_path = "/" in include_text
-            if not include_text.endswith( ".md" ) or ( not is_service_path and Path( include_text ).name != include_text ):
-                raise CaseParseError(
-                    f"{where}: Includes needs 'stage N', a .md file in the same folder, "
-                    f"or a .md path from the service folder, got {include_text!r}"
-                )
-
-            target = ( service_dir if is_service_path else path.parent ) / include_text
-            if target.resolve() in file_chain:
-                file_names = " -> ".join( file.name for file in ( *file_chain, target.resolve() ) )
-                raise CaseParseError( f"{where}: include cycle: {file_names} ({path} includes {target})" )
-            if not target.is_file():
-                raise CaseParseError( f"{where}: {path} includes {target}, which does not exist" )
-
+            target = resolve_include_file( where, include_text, path, service_dir, file_chain )
             target_sections = split_sections( target.read_text().splitlines() )
             target_input = next( ( target_section for target_section in target_sections if target_section.key == "input" ), None )
             if target_input is None:
@@ -259,16 +341,27 @@ def parse_case( path: Path, service_dir: Path = SERVICE_DIR ) -> Case:
     stages: list[ Stage ] = []
     for stage_number, parts in sorted( stage_sections.items() ):
         first_line = min( part.line for part in parts.values() )
-        for required_part in ( "input", "pass" ):
-            if required_part not in parts:
-                raise CaseParseError( f"{path}:{first_line}: stage {stage_number} has no {required_part} section" )
+        if "input" not in parts and "approved brief" not in parts:
+            raise CaseParseError( f"{path}:{first_line}: stage {stage_number} has no input section" )
+        if "pass" not in parts:
+            raise CaseParseError( f"{path}:{first_line}: stage {stage_number} has no pass section" )
 
-        messages = read_input( path, parts[ "input" ], stage_inputs, ( stage_number, ), ( path.resolve(), ), service_dir )
+        messages = (
+            read_input( path, parts[ "input" ], stage_inputs, ( stage_number, ), ( path.resolve(), ), service_dir )
+            if "input" in parts
+            else []
+        )
+        artifacts = (
+            read_approved_brief( path, parts[ "approved brief" ], ( path.resolve(), ), service_dir )
+            if "approved brief" in parts
+            else []
+        )
         own_checks = read_checks( path, parts[ "checks" ], entry ) if "checks" in parts else []
         stages.append(
             Stage(
                 number = stage_number,
                 messages = messages,
+                artifacts = artifacts,
                 pass_criteria = read_criteria( parts[ "pass" ] ),
                 fail_criteria = read_criteria( parts[ "fail" ] ) if "fail" in parts else [],
                 checks = [ *readme_checks, *own_checks ]

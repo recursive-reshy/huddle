@@ -301,8 +301,23 @@ def test_empty_notes_produce_no_notes_tag() -> None:
 
     assert "<notes>" not in block_texts( result )[ 0 ]
 
-def test_context_with_no_questions_messages_or_notes_fails_with_a_reason() -> None:
-    result = build_source_turn( make_context( artifacts = [ make_section( "goals" ) ], notes = "" ) )
+def test_context_with_only_artifacts_builds_one_user_turn_with_one_cached_approved_artifacts_block() -> None:
+    result = build_source_turn(
+        make_context( artifacts = [ make_section( "summary" ), make_section( "goals" ) ] )
+    )
+
+    assert result.outcome == TurnsOutcome.BUILT
+    assert result.reason is None
+    assert len( result.turns ) == 1
+    assert result.turns[ 0 ][ "role" ] == "user"
+    blocks = source_blocks( result )
+    assert len( blocks ) == 1
+    assert blocks[ 0 ][ "text" ].startswith( "<approved_artifacts>\n" )
+    assert blocks[ 0 ][ "text" ].endswith( "</approved_artifacts>" )
+    assert blocks[ 0 ][ "cache_control" ] == cache_marker
+
+def test_context_with_all_six_fields_empty_fails_with_a_reason() -> None:
+    result = build_source_turn( make_context() )
 
     assert result.outcome == TurnsOutcome.FAILED
     assert result.turns == []

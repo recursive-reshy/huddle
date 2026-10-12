@@ -14,6 +14,7 @@ from pydantic import SecretStr
 
 from agents.config import Settings
 from agents.main import create_app
+from tests.conftest import write_registry_prompts
 
 sse_body = ( Path( __file__ ).parents[ 1 ] / "fixtures" / "sse" / "chat_reply.txt" ).read_text()
 
@@ -61,10 +62,7 @@ def build_stubbed_app(
     respond_override: Callable[ [ httpx2.Request ], httpx2.Response ] | None = None
 ) -> StubbedApp:
     monkeypatch.delenv( "AGENTS_FAKE", raising = False )
-    prompt_path = tmp_path / "pm" / "pm_discovery_reply.md"
-    prompt_path.parent.mkdir( parents = True )
-    prompt_path.write_bytes( prompt_bytes )
-    ( tmp_path / "pm" / "pm_draft_brief.md" ).write_bytes( prompt_bytes )
+    write_registry_prompts( tmp_path, prompt_bytes )
 
     recorded_requests: list[ httpx2.Request ] = []
 

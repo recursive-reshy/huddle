@@ -5,6 +5,8 @@ import tomllib
 from collections.abc import Coroutine
 from datetime import datetime
 from pathlib import Path
+from statistics import median
+from time import monotonic
 
 import httpx2
 from anthropic import AsyncAnthropic
@@ -12,8 +14,8 @@ from pydantic import BaseModel, ValidationError
 
 from agents.config import Settings
 from agents.contract.context import ProjectRef, StepContext, Task, TaskMode
-from agents.contract.lines import ErrorLine, ResultLine, UsageLine
-from agents.contract.outputs import ChatReplyOutput, Output
+from agents.contract.lines import DeltaLine, ErrorLine, ResultLine, UsageLine
+from agents.contract.outputs import ChatReplyOutput, Output, ReviewOutput
 from agents.contract.request import StepRequest
 from agents.main import stream_step
 from agents.roles.registry import registry
@@ -22,6 +24,8 @@ from evals.cases import SERVICE_DIR, Case, CaseParseError, find_case_paths, pars
 from evals.checks import CheckOutcome, CheckResult, evaluate_check
 
 TOKENS_PER_PRICE_UNIT = 1_000_000
+# US-5: a chat reply must start streaming within 10 seconds
+FIRST_TEXT_LIMIT_SECONDS = 10
 
 class ModelPrices( BaseModel ):
     input: float
@@ -44,6 +48,8 @@ class RunResult( BaseModel ):
     output_tokens: int = 0
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
+    first_text_seconds: float | None = None
+    total_seconds: float | None = None
     output: Output | None = None
     check_results: list[ CheckResult ] = []
 
@@ -63,6 +69,16 @@ class EvalRun( BaseModel ):
 def render_output( output: Output ) -> str:
     if isinstance( output, ChatReplyOutput ):
         return output.content
+
+    if isinstance( output, ReviewOutput ):
+        if not output.questions:
+            return f"{output.notes}\n\nNo questions."
+
+        numbered_questions = "\n".join(
+            f"{number}. {question.question}" for number, question in enumerate( output.questions, start = 1 )
+        )
+
+        return f"{output.notes}\n\n{numbered_questions}"
 
     return "\n\n".join( f"### {section.title}\n{section.content}" for section in output.draft )
 
@@ -86,6 +102,37 @@ def render_report( eval_run: EvalRun ) -> str:
             counts[ 1 ] += 1
             if check_result.outcome == CheckOutcome.PASSED:
                 counts[ 0 ] += 1
+
+    failure_counts: dict[ str, int ] = {}
+    for result in eval_run.results:
+        if result.error is not None:
+            error_code = result.error.partition( ":" )[ 0 ]
+            failure_counts[ error_code ] = failure_counts.get( error_code, 0 ) + 1
+
+    timing_rows: list[ str ] = []
+    for case in eval_run.cases:
+        for stage in case.stages:
+            stage_results = [
+                result
+                for result in eval_run.results
+                if ( result.case_number, result.stage_number ) == ( case.number, stage.number )
+            ]
+            first_text_values = [
+                result.first_text_seconds for result in stage_results if result.first_text_seconds is not None
+            ]
+            total_values = [ result.total_seconds for result in stage_results if result.total_seconds is not None ]
+            if not total_values:
+                continue
+
+            first_text_median = f"{median( first_text_values ):.1f}" if first_text_values else "—"
+            first_text_max = f"{max( first_text_values ):.1f}" if first_text_values else "—"
+            if first_text_values and max( first_text_values ) > FIRST_TEXT_LIMIT_SECONDS:
+                first_text_max += " ⚠"
+
+            timing_rows.append(
+                f"| {case.number:02d} | {stage.number} | {first_text_median} | {first_text_max} "
+                f"| {median( total_values ):.1f} | {max( total_values ):.1f} |"
+            )
 
     skipped_count = sum( 1 for result in eval_run.results if result.is_skipped )
     budget_stop = (
@@ -114,6 +161,22 @@ def render_report( eval_run: EvalRun ) -> str:
         for label, counts in pass_counts.items()
     )
 
+    if timing_rows:
+        lines.extend(
+            [
+                "",
+                "Timing per stage (seconds):",
+                "",
+                "| Case | Stage | First text median | First text max | Total median | Total max |",
+                "| --- | --- | --- | --- | --- | --- |",
+                *timing_rows
+            ]
+        )
+
+    if failure_counts:
+        lines.extend( [ "", "Failed runs by error code:", "", "| Failed runs |", "| --- |" ] )
+        lines.extend( f"| {error_code}: {count} |" for error_code, count in failure_counts.items() )
+
     manual_cases = [ case for case in eval_run.cases if case.manual_reason is not None ]
     if manual_cases:
         lines.extend( [ "", "## Manual cases (not run)", "" ] )
@@ -139,6 +202,12 @@ def render_report( eval_run: EvalRun ) -> str:
                     lines.extend( [ "", f"**Repeat {result.repeat_number}** — not run: budget stop" ] )
                     continue
 
+                timing = ""
+                if result.first_text_seconds is not None:
+                    timing += f", first_text_seconds: {result.first_text_seconds:.1f}"
+                if result.total_seconds is not None:
+                    timing += f", total_seconds: {result.total_seconds:.1f}"
+
                 lines.extend(
                     [
                         "",
@@ -146,6 +215,7 @@ def render_report( eval_run: EvalRun ) -> str:
                             f"**Repeat {result.repeat_number}** — calls: {result.calls}, tokens: "
                             f"input {result.input_tokens}, output {result.output_tokens}, "
                             f"cache read {result.cache_read_tokens}, cache write {result.cache_write_tokens}"
+                            f"{timing}"
                         ),
                         ""
                     ]
@@ -191,7 +261,7 @@ async def run_all(
                 model = arguments.model,
                 context = StepContext(
                     project = ProjectRef( id = "eval", name = f"Eval case {case.number:02d}" ),
-                    artifacts = [],
+                    artifacts = stage.artifacts,
                     decisions = [],
                     draft = [],
                     questions = [],
@@ -199,8 +269,11 @@ async def run_all(
                     task = Task( notes = "", mode = TaskMode.NORMAL, may_ask = False )
                 )
             )
+            step_started_at = monotonic()
             async for line in stream_step( step_request, settings, client, case.first_tool_error ):
-                if isinstance( line, UsageLine ):
+                if isinstance( line, DeltaLine ) and result.first_text_seconds is None:
+                    result.first_text_seconds = monotonic() - step_started_at
+                elif isinstance( line, UsageLine ):
                     result.calls += 1
                     result.input_tokens += line.input_tokens
                     result.output_tokens += line.output_tokens
@@ -214,8 +287,10 @@ async def run_all(
                     ) / TOKENS_PER_PRICE_UNIT
                 elif isinstance( line, ResultLine ):
                     result.output = line.output
+                    result.total_seconds = monotonic() - step_started_at
                 elif isinstance( line, ErrorLine ):
                     result.error = f"{line.code}: {line.message}"
+                    result.total_seconds = monotonic() - step_started_at
 
             if result.output is not None and result.error is None:
                 result.check_results = [ evaluate_check( check, result.output, result.calls ) for check in stage.checks ]

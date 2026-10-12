@@ -17,6 +17,7 @@ class MessageKind( StrEnum ):
     CHAT = "chat"
     DISCUSSION = "discussion"
     SUMMARY = "summary"
+    REVIEW = "review"
     SYSTEM = "system"
 
 class TaskMode( StrEnum ):

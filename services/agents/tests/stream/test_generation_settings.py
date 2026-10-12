@@ -12,6 +12,7 @@ from pydantic import SecretStr
 from agents.config import Settings
 from agents.main import create_app
 from agents.roles.sections import BRIEF_SECTION_KEYS
+from tests.conftest import write_registry_prompts
 
 chat_sse_body = ( Path( __file__ ).parents[ 1 ] / "fixtures" / "sse" / "chat_reply.txt" ).read_text()
 
@@ -138,9 +139,7 @@ def build_stubbed_app(
 ) -> StubbedApp:
     monkeypatch.delenv( "AGENTS_FAKE", raising = False )
     prompt_bytes = f"+++\nmax_tokens = 1024\n{front_matter}+++\nYou are the PM.\n".encode()
-    ( prompts_directory / "pm" ).mkdir( parents = True )
-    ( prompts_directory / "pm" / "pm_discovery_reply.md" ).write_bytes( prompt_bytes )
-    ( prompts_directory / "pm" / "pm_draft_brief.md" ).write_bytes( prompt_bytes )
+    write_registry_prompts( prompts_directory, prompt_bytes )
 
     recorded_requests: list[ httpx2.Request ] = []
 

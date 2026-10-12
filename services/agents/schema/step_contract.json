@@ -198,6 +198,7 @@
         "chat",
         "discussion",
         "summary",
+        "review",
         "system"
       ],
       "title": "MessageKind",
@@ -307,7 +308,8 @@
           "discriminator": {
             "mapping": {
               "chat_reply": "#/$defs/ChatReplyOutput",
-              "draft_artifact": "#/$defs/DraftArtifactOutput"
+              "draft_artifact": "#/$defs/DraftArtifactOutput",
+              "review": "#/$defs/ReviewOutput"
             },
             "propertyName": "output_type"
           },
@@ -317,6 +319,9 @@
             },
             {
               "$ref": "#/$defs/DraftArtifactOutput"
+            },
+            {
+              "$ref": "#/$defs/ReviewOutput"
             }
           ],
           "title": "Output"
@@ -338,6 +343,51 @@
         "output"
       ],
       "title": "ResultLine",
+      "type": "object"
+    },
+    "ReviewOutput": {
+      "additionalProperties": false,
+      "properties": {
+        "notes": {
+          "minLength": 1,
+          "title": "Notes",
+          "type": "string"
+        },
+        "output_type": {
+          "const": "review",
+          "title": "Output Type",
+          "type": "string"
+        },
+        "questions": {
+          "items": {
+            "$ref": "#/$defs/ReviewQuestion"
+          },
+          "maxItems": 10,
+          "title": "Questions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "output_type",
+        "notes",
+        "questions"
+      ],
+      "title": "ReviewOutput",
+      "type": "object"
+    },
+    "ReviewQuestion": {
+      "additionalProperties": false,
+      "properties": {
+        "question": {
+          "minLength": 1,
+          "title": "Question",
+          "type": "string"
+        }
+      },
+      "required": [
+        "question"
+      ],
+      "title": "ReviewQuestion",
       "type": "object"
     },
     "Section": {

@@ -2,6 +2,8 @@ from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+MAX_REVIEW_QUESTIONS = 10
+
 class ChatReplyOutput( BaseModel ):
     model_config = ConfigDict( extra = "forbid" )
 
@@ -30,4 +32,19 @@ class DraftArtifactOutput( BaseModel ):
 
         return draft
 
-Output = Annotated[ ChatReplyOutput | DraftArtifactOutput, Field( discriminator = "output_type" ) ]
+class ReviewQuestion( BaseModel ):
+    model_config = ConfigDict( extra = "forbid" )
+
+    question: str = Field( min_length = 1 )
+
+class ReviewOutput( BaseModel ):
+    model_config = ConfigDict( extra = "forbid" )
+
+    output_type: Literal[ "review" ]
+    notes: str = Field( min_length = 1 )
+    questions: list[ ReviewQuestion ] = Field( max_length = MAX_REVIEW_QUESTIONS )
+
+Output = Annotated[
+    ChatReplyOutput | DraftArtifactOutput | ReviewOutput,
+    Field( discriminator = "output_type" )
+]

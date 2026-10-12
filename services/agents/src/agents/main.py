@@ -9,6 +9,7 @@ from pydantic import ValidationError
 from agents.config import Settings
 from agents.contract.errors import ErrorCode
 from agents.contract.lines import ErrorLine, StepLine
+from agents.contract.outputs import ChatReplyOutput, ReviewOutput
 from agents.contract.request import StepRequest
 from agents.roles.registry import registry
 from agents.runtime.claude import stream_chat_reply
@@ -17,6 +18,7 @@ from agents.runtime.draft import stream_draft_artifact
 from agents.runtime.errors import map_exception
 from agents.runtime.fake import stream_fake_step
 from agents.runtime.prompts import load_prompt
+from agents.runtime.review import stream_review
 from agents.runtime.stream import to_ndjson
 
 logger = logging.getLogger( __name__ )
@@ -38,9 +40,10 @@ async def stream_step(
             raise ValueError( "No Anthropic client is configured" )
 
         prompt = load_prompt( settings.prompts_dir, step_request.agent, step_request.kind )
-        section_keys = registry[ ( step_request.agent, step_request.kind ) ].section_keys
+        entry = registry[ ( step_request.agent, step_request.kind ) ]
+        is_chat_reply = entry.output_type is ChatReplyOutput
 
-        if section_keys is None:
+        if is_chat_reply:
             turns_result = build_turns( step_request.context.messages )
         else:
             turns_result = build_source_turn( step_request.context )
@@ -56,7 +59,7 @@ async def stream_step(
 
         system = build_system( prompt.body, step_request.context.project )
 
-        if section_keys is None:
+        if is_chat_reply:
             lines = stream_chat_reply(
                 client,
                 step_request.model,
@@ -64,6 +67,18 @@ async def stream_step(
                 system,
                 turns_result.turns
             )
+        elif entry.output_type is ReviewOutput:
+            lines = stream_review(
+                client,
+                step_request.model,
+                prompt,
+                system,
+                turns_result.turns,
+                settings.heartbeat_seconds,
+                first_tool_error
+            )
+        elif entry.section_keys is None:
+            raise ValueError( f"Drafting kind {step_request.kind!r} has no section keys" )
         else:
             lines = stream_draft_artifact(
                 client,
@@ -71,7 +86,7 @@ async def stream_step(
                 prompt,
                 system,
                 turns_result.turns,
-                section_keys,
+                entry.section_keys,
                 settings.heartbeat_seconds,
                 first_tool_error
             )

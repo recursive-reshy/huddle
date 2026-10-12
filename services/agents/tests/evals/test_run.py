@@ -1,6 +1,7 @@
 import json
 import re
 from collections.abc import AsyncIterator, Callable
+from datetime import datetime
 from pathlib import Path
 
 import httpx2
@@ -9,10 +10,12 @@ from anthropic import AsyncAnthropic
 
 from agents.config import Settings
 from agents.contract.lines import StepLine
+from agents.contract.outputs import ReviewOutput
 from agents.contract.request import StepRequest
 from agents.main import stream_step
 from agents.roles.sections import BRIEF_SECTION_KEYS
-from evals.run import main
+from evals.cases import Case, Stage
+from evals.run import EvalRun, RunResult, main, render_output, render_report
 
 PRICES_TEXT = (
     "[models.\"test-model\"]\n"
@@ -156,6 +159,44 @@ def draft_body(
         )
         + sse_event( "content_block_stop", { "type": "content_block_stop", "index": 0 } )
         + message_end_events( "tool_use", output_tokens )
+    )
+
+REVIEW_CASE_TEXT = (
+    "# Case 01: review\n"
+    "\n"
+    "## Input\n"
+    "H: The brief is approved.\n"
+    "\n"
+    "## Pass\n"
+    "- Asks about offline use.\n"
+    "\n"
+    "## Checks\n"
+    "- contains: offline\n"
+)
+
+def review_body( notes: str, questions: list[ str ] ) -> str:
+    tool_input = { "notes": notes, "questions": [ { "question": question } for question in questions ] }
+
+    return (
+        message_start_event( 300, 0, 0 )
+        + sse_event(
+            "content_block_start",
+            {
+                "type": "content_block_start",
+                "index": 0,
+                "content_block": { "type": "tool_use", "id": "toolu_01", "name": "submit_review", "input": {} }
+            }
+        )
+        + sse_event(
+            "content_block_delta",
+            {
+                "type": "content_block_delta",
+                "index": 0,
+                "delta": { "type": "input_json_delta", "partial_json": json.dumps( tool_input ) }
+            }
+        )
+        + sse_event( "content_block_stop", { "type": "content_block_stop", "index": 0 } )
+        + message_end_events( "tool_use", 400 )
     )
 
 class Harness:
@@ -391,3 +432,162 @@ def test_manual_cases_are_listed_with_their_reason_and_never_run( harness: Harne
     assert "## Manual cases (not run)" in report
     assert "- Case 10: replay — Multi-turn replay, run by hand." in report
     assert "## Case 10" not in report
+
+def test_review_run_writes_a_report_with_notes_and_numbered_questions_and_a_contains_check_on_question_text_passes(
+    harness: Harness
+) -> None:
+    review_folder = harness.service_dir / "evals" / "cases" / "sa" / "sa_review_brief"
+    review_folder.mkdir( parents = True )
+    ( review_folder / "01-review.md" ).write_text( REVIEW_CASE_TEXT )
+    harness.respond_with(
+        [
+            review_body(
+                "The brief is thin on scope.",
+                [ "Which workflows must work offline?", "How many people use it at once?" ]
+            )
+        ]
+    )
+
+    exit_code = harness.run( [ "sa/sa_review_brief", "--model", "test-model", "--repeats", "1" ] )
+
+    report = harness.read_report()
+    assert exit_code == 0
+    assert "The brief is thin on scope.\n\n1. Which workflows must work offline?\n2. How many people use it at once?" in report
+    assert "✓ contains: 'offline' found" in report
+    assert "| contains: offline | 1/1 | 100% |" in report
+    assert render_output( ReviewOutput( output_type = "review", notes = "All clear.", questions = [] ) ) == (
+        "All clear.\n\nNo questions."
+    )
+
+def make_clock( readings: list[ float ] ) -> Callable[ [], float ]:
+    remaining = list( readings )
+
+    def clock() -> float:
+        if len( remaining ) > 1:
+            return remaining.pop( 0 )
+
+        return remaining[ 0 ]
+
+    return clock
+
+def test_chat_run_reports_first_text_and_total_seconds_and_a_draft_run_only_total_seconds(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_case( harness, "01-first.md", DISCOVERY_CASE_TEXT )
+    harness.respond_with( [ chat_body( "What problem does it solve?" ) ] )
+    monkeypatch.setattr( "evals.run.monotonic", make_clock( [ 100.0, 103.0, 108.0 ] ) )
+
+    harness.run( [ "pm/pm_discovery_reply", "--model", "test-model", "--repeats", "1" ] )
+
+    chat_report = harness.read_report()
+    assert "first_text_seconds: 3.0" in chat_report
+    assert "total_seconds: 8.0" in chat_report
+    assert "⚠" not in chat_report
+
+def test_draft_run_reports_only_total_seconds( harness: Harness, monkeypatch: pytest.MonkeyPatch ) -> None:
+    write_case( harness, "02-draft.md", DRAFT_CASE_TEXT, kind = "pm_draft_brief" )
+    harness.respond_with( [ draft_body() ] )
+    monkeypatch.setattr( "evals.run.monotonic", make_clock( [ 100.0, 108.0 ] ) )
+
+    harness.run( [ "pm/pm_draft_brief", "--model", "test-model", "--repeats", "1" ] )
+
+    report = harness.read_report()
+    assert "total_seconds: 8.0" in report
+    assert "first_text_seconds" not in report
+
+def test_stage_whose_slowest_first_text_is_over_10_seconds_is_marked_in_the_header(
+    harness: Harness,
+    monkeypatch: pytest.MonkeyPatch
+) -> None:
+    write_case( harness, "01-first.md", DISCOVERY_CASE_TEXT )
+    harness.respond_with( [ chat_body( "What problem does it solve?" ) ] )
+    monkeypatch.setattr( "evals.run.monotonic", make_clock( [ 0.0, 12.0, 13.0, 20.0, 23.0, 28.0 ] ) )
+
+    harness.run( [ "pm/pm_discovery_reply", "--model", "test-model", "--repeats", "2", "--concurrency", "1" ] )
+
+    report = harness.read_report()
+    header = report.split( "## Case 01" )[ 0 ]
+    assert "| 01 | 1 | 7.5 | 12.0 ⚠ | 10.5 | 13.0 |" in header
+    assert "first_text_seconds: 12.0" in report
+    assert "first_text_seconds: 3.0" in report
+
+def make_eval_run( error_codes: list[ str | None ] ) -> EvalRun:
+    case = Case(
+        path = Path( "01-case.md" ),
+        agent = "pm",
+        kind = "pm_draft_brief",
+        number = 1,
+        title = "case",
+        stages = [ Stage( number = 1, messages = [], pass_criteria = [], fail_criteria = [], checks = [] ) ]
+    )
+
+    return EvalRun(
+        started_at = datetime( 2026, 10, 12, 9, 0, 0 ),
+        agent = "pm",
+        kind = "pm_draft_brief",
+        model = "test-model",
+        prompt_hash = "0" * 64,
+        repeats = len( error_codes ),
+        max_cost = 2.0,
+        cases = [ case ],
+        results = [
+            RunResult(
+                case_number = 1,
+                stage_number = 1,
+                repeat_number = number,
+                error = None if code is None else f"{code}: something went wrong"
+            )
+            for number, code in enumerate( error_codes, start = 1 )
+        ],
+        total_cost = 0.0,
+        is_budget_stopped = False
+    )
+
+def test_header_counts_failed_runs_by_error_code_and_has_no_table_when_nothing_failed() -> None:
+    failing_report = render_report( make_eval_run( [ "truncated", "validation_failed", "truncated", None ] ) )
+    clean_report = render_report( make_eval_run( [ None, None ] ) )
+
+    assert "| truncated: 2 |" in failing_report
+    assert "| validation_failed: 1 |" in failing_report
+    assert "Failed runs" in failing_report
+    assert "Failed runs" not in clean_report
+
+def test_review_case_with_an_approved_brief_sends_it_in_the_source_turn_and_reports_the_review_checks(
+    harness: Harness
+) -> None:
+    review_folder = harness.service_dir / "evals" / "cases" / "sa" / "sa_review_brief"
+    review_folder.mkdir( parents = True )
+    ( review_folder / "01-brief.md" ).write_text(
+        "# Case 01: brief\n"
+        "\n"
+        "## Approved brief\n"
+        "### summary: Summary\n"
+        "A salon booking tool.\n"
+        "\n"
+        "### goals: Goals\n"
+        "No double bookings.\n"
+        "\n"
+        "## Pass\n"
+        "- Asks about offline use.\n"
+        "\n"
+        "## Checks\n"
+        "- questions min: 1\n"
+        "- any question contains: offline\n"
+        "- notes not_contains: MySQL\n"
+    )
+    harness.respond_with( [ review_body( "Thin on scope.", [ "Which workflows must work offline?" ] ) ] )
+
+    exit_code = harness.run( [ "sa/sa_review_brief", "--model", "test-model", "--repeats", "1" ] )
+
+    sent = json.loads( harness.recorded_requests[ 0 ].content )
+    source_text = sent[ "messages" ][ 0 ][ "content" ][ 0 ][ "text" ]
+    assert source_text.startswith( "<approved_artifacts>\n" )
+    assert "A salon booking tool." in source_text
+    assert "No double bookings." in source_text
+    report = harness.read_report()
+    assert exit_code == 0
+    assert "✓ questions min: 1 >= 1" in report
+    assert "✓ any question contains: 'offline' found" in report
+    assert "✓ notes not_contains: 'MySQL' not found" in report
+    assert "| questions min: 1 | 1/1 | 100% |" in report

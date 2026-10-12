@@ -3,11 +3,14 @@ from enum import StrEnum
 
 from pydantic import BaseModel
 
-from agents.contract.outputs import ChatReplyOutput, DraftArtifactOutput
+from agents.contract.outputs import ChatReplyOutput, DraftArtifactOutput, Output, ReviewOutput
 from agents.roles.registry import RegistryEntry
 
 SECTION_CHECK_PATTERN = re.compile( r"section\s+(\S+)\s+(contains|not_contains|equals):\s*(.*)" )
 PLAIN_CHECK_PATTERN = re.compile( r"(\w+):\s*(.*)" )
+REVIEW_CHECK_PATTERN = re.compile(
+    r"(notes contains|notes not_contains|questions max|questions min|any question contains|no question contains):\s*(.*)"
+)
 
 class CheckName( StrEnum ):
     MAX_WORDS = "max_words"
@@ -18,6 +21,12 @@ class CheckName( StrEnum ):
     SECTION_NOT_CONTAINS = "section_not_contains"
     SECTION_EQUALS = "section_equals"
     CALLS = "calls"
+    NOTES_CONTAINS = "notes contains"
+    NOTES_NOT_CONTAINS = "notes not_contains"
+    QUESTIONS_MAX = "questions max"
+    QUESTIONS_MIN = "questions min"
+    ANY_QUESTION_CONTAINS = "any question contains"
+    NO_QUESTION_CONTAINS = "no question contains"
 
 class CheckOutcome( StrEnum ):
     PASSED = "passed"
@@ -35,6 +44,18 @@ class CheckResult( BaseModel ):
 
 def parse_check( text: str, entry: RegistryEntry ) -> Check:
     is_chat = entry.output_type is ChatReplyOutput
+
+    review_match = REVIEW_CHECK_PATTERN.fullmatch( text )
+    if review_match is not None:
+        review_name, review_argument = review_match.groups()
+        if entry.output_type is not ReviewOutput:
+            raise ValueError( f"review checks apply only to review kinds: {text}" )
+        if review_name in ( CheckName.QUESTIONS_MAX, CheckName.QUESTIONS_MIN ) and not review_argument.isdecimal():
+            raise ValueError( f"{review_name} needs a whole number: {text}" )
+        if review_argument == "":
+            raise ValueError( f"missing text in: {text}" )
+
+        return Check( name = CheckName( review_name ), argument = review_argument )
 
     section_match = SECTION_CHECK_PATTERN.fullmatch( text )
     if section_match is not None:
@@ -65,9 +86,11 @@ def parse_check( text: str, entry: RegistryEntry ) -> Check:
 
     return Check( name = name, argument = argument )
 
-def evaluate_check( check: Check, output: ChatReplyOutput | DraftArtifactOutput, calls: int ) -> CheckResult:
+def evaluate_check( check: Check, output: Output, calls: int ) -> CheckResult:
     if isinstance( output, ChatReplyOutput ):
         texts = [ output.content ]
+    elif isinstance( output, ReviewOutput ):
+        texts = [ output.notes, *( question.question for question in output.questions ) ]
     else:
         texts = [ section.content for section in output.draft ]
 
@@ -101,6 +124,49 @@ def evaluate_check( check: Check, output: ChatReplyOutput | DraftArtifactOutput,
             check = check,
             outcome = CheckOutcome.PASSED if is_within else CheckOutcome.FAILED,
             reason = f"max_questions: {question_count} {'<=' if is_within else '>'} {limit}"
+        )
+
+    if check.name in ( CheckName.QUESTIONS_MAX, CheckName.QUESTIONS_MIN ):
+        if not isinstance( output, ReviewOutput ):
+            raise ValueError( f"{check.name} can only be evaluated on a review" )
+
+        limit = int( check.argument )
+        question_count = len( output.questions )
+        if check.name == CheckName.QUESTIONS_MAX:
+            is_within = question_count <= limit
+            operator = "<=" if is_within else ">"
+        else:
+            is_within = question_count >= limit
+            operator = ">=" if is_within else "<"
+
+        return CheckResult(
+            check = check,
+            outcome = CheckOutcome.PASSED if is_within else CheckOutcome.FAILED,
+            reason = f"{check.name}: {question_count} {operator} {limit}"
+        )
+
+    if check.name in ( CheckName.NOTES_CONTAINS, CheckName.NOTES_NOT_CONTAINS ):
+        if not isinstance( output, ReviewOutput ):
+            raise ValueError( f"{check.name} can only be evaluated on a review" )
+
+        is_found = check.argument.lower() in output.notes.lower()
+        is_pass = is_found if check.name == CheckName.NOTES_CONTAINS else not is_found
+        return CheckResult(
+            check = check,
+            outcome = CheckOutcome.PASSED if is_pass else CheckOutcome.FAILED,
+            reason = f"{check.name}: {check.argument!r} {'found' if is_found else 'not found'}"
+        )
+
+    if check.name in ( CheckName.ANY_QUESTION_CONTAINS, CheckName.NO_QUESTION_CONTAINS ):
+        if not isinstance( output, ReviewOutput ):
+            raise ValueError( f"{check.name} can only be evaluated on a review" )
+
+        is_found = any( check.argument.lower() in question.question.lower() for question in output.questions )
+        is_pass = is_found if check.name == CheckName.ANY_QUESTION_CONTAINS else not is_found
+        return CheckResult(
+            check = check,
+            outcome = CheckOutcome.PASSED if is_pass else CheckOutcome.FAILED,
+            reason = f"{check.name}: {check.argument!r} {'found' if is_found else 'not found'}"
         )
 
     if check.name in ( CheckName.CONTAINS, CheckName.NOT_CONTAINS ):

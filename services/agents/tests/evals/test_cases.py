@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from agents.contract.context import MessageKind
+from agents.contract.context import ArtifactKind, MessageKind
 from evals.cases import SERVICE_DIR, CaseParseError, find_case_paths, parse_case
 
 def write_case( tmp_path: Path, name: str, text: str, kind: str = "pm_discovery_reply" ) -> Path:
@@ -242,7 +242,125 @@ def test_every_real_case_file_parses_and_discovery_case_10_is_manual() -> None:
 
     cases = [ parse_case( case_path ) for case_path in case_paths ]
 
-    assert len( cases ) == 28
+    assert len( cases ) == 35
     manual_cases = [ case for case in cases if case.manual_reason is not None ]
     assert [ ( case.kind, case.number ) for case in manual_cases ] == [ ( "pm_discovery_reply", 10 ) ]
     assert all( case.stages for case in cases if case.manual_reason is None )
+
+def write_review_case( tmp_path: Path, name: str, text: str ) -> Path:
+    folder = tmp_path / "sa" / "sa_review_brief"
+    folder.mkdir( parents = True, exist_ok = True )
+    path = folder / name
+    path.write_text( text )
+
+    return path
+
+BRIEF_CASE_TEXT = (
+    "# Case 01: brief\n"
+    "\n"
+    "A description that is ignored.\n"
+    "\n"
+    "## Approved brief\n"
+    "### summary: Summary\n"
+    "A salon tool.\n"
+    "\n"
+    "### goals: Goals and aims\n"
+    "No double bookings.\n"
+    "Second line.\n"
+    "\n"
+    "### scope_v1: Scope for v1\n"
+    "Three services.\n"
+    "\n"
+    "## Pass\n"
+    "- Fine.\n"
+)
+
+def test_approved_brief_becomes_artifact_sections_in_file_order_with_trimmed_content( tmp_path: Path ) -> None:
+    path = write_review_case( tmp_path, "01-brief.md", BRIEF_CASE_TEXT )
+
+    case = parse_case( path )
+
+    stage = case.stages[ 0 ]
+    assert stage.messages == []
+    assert [ section.section_key for section in stage.artifacts ] == [ "summary", "goals", "scope_v1" ]
+    assert [ section.title for section in stage.artifacts ] == [ "Summary", "Goals and aims", "Scope for v1" ]
+    assert [ section.content for section in stage.artifacts ] == [
+        "A salon tool.",
+        "No double bookings.\nSecond line.",
+        "Three services."
+    ]
+    assert all(
+        ( section.artifact_id, section.version, section.kind ) == ( "eval-brief", 1, ArtifactKind.BRIEF )
+        for section in stage.artifacts
+    )
+
+def test_approved_brief_with_an_unknown_section_key_is_an_error_naming_file_and_line( tmp_path: Path ) -> None:
+    path = write_review_case(
+        tmp_path,
+        "01-brief.md",
+        BRIEF_CASE_TEXT.replace( "### goals: Goals and aims", "### aims: Goals and aims" )
+    )
+
+    with pytest.raises( CaseParseError ) as error:
+        parse_case( path )
+
+    assert f"{path}:9" in str( error.value )
+    assert "aims" in str( error.value )
+
+def test_stage_approved_brief_section_is_read_for_a_multi_stage_case( tmp_path: Path ) -> None:
+    path = write_review_case(
+        tmp_path,
+        "02-stages.md",
+        "# Case 02: stages\n"
+        "\n"
+        "## Stage 1 approved brief\n"
+        "### summary: Summary\n"
+        "First.\n"
+        "\n"
+        "## Stage 1 pass\n"
+        "- One.\n"
+        "\n"
+        "## Stage 2 approved brief\n"
+        "### summary: Summary\n"
+        "Second.\n"
+        "\n"
+        "## Stage 2 pass\n"
+        "- Two.\n"
+    )
+
+    case = parse_case( path )
+
+    assert [ stage.artifacts[ 0 ].content for stage in case.stages ] == [ "First.", "Second." ]
+
+def test_approved_brief_that_includes_a_file_puts_that_files_sections_first( tmp_path: Path ) -> None:
+    write_review_case( tmp_path, "other.md", BRIEF_CASE_TEXT )
+    path = write_review_case(
+        tmp_path,
+        "02-includes.md",
+        "# Case 02: includes\n"
+        "\n"
+        "## Approved brief\n"
+        "Includes: other.md\n"
+        "### decisions: Decisions made\n"
+        "- Mine.\n"
+        "\n"
+        "## Pass\n"
+        "- Fine.\n"
+    )
+
+    case = parse_case( path )
+
+    assert [ section.section_key for section in case.stages[ 0 ].artifacts ] == [ "summary", "goals", "scope_v1", "decisions" ]
+
+def test_approved_brief_that_includes_a_missing_file_is_an_error_naming_both_files( tmp_path: Path ) -> None:
+    path = write_review_case(
+        tmp_path,
+        "02-includes.md",
+        "# Case 02: includes\n\n## Approved brief\nIncludes: gone.md\n\n## Pass\n- Fine.\n"
+    )
+
+    with pytest.raises( CaseParseError ) as error:
+        parse_case( path )
+
+    assert f"{path}:4" in str( error.value )
+    assert "gone.md" in str( error.value )
