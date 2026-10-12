@@ -58,16 +58,19 @@ afterEach( () => {
 } )
 
 describe( 'migrate', () => {
-  it( 'applies 0001 to a fresh database', () => {
+  it( 'applies every migration in db/ to a fresh database, in order', () => {
     const testFile = path.join( realDir, '0001_init.test.mjs' )
     const testFileModifiedAt = fs.statSync( testFile ).mtimeMs
+    const files = fs.readdirSync( realDir ).filter( ( file ) => /^\d{4}_[a-z0-9_]+\.sql$/.test( file ) ).sort()
 
     const applied = migrate( db, { dir: realDir, snapshotDir, now: 1000 } )
 
-    expect( applied ).toEqual( [ '0001_init.sql' ] )
-    expect( db.prepare( 'SELECT name, sha256 FROM schema_migrations' ).all() ).toEqual( [
-      { name: '0001_init.sql', sha256: sha256Of( path.join( realDir, '0001_init.sql' ) ) },
-    ] )
+    expect( files[ 0 ] ).toBe( '0001_init.sql' )
+    expect( files ).toContain( '0002_messages_review_kind.sql' )
+    expect( applied ).toEqual( files )
+    expect( db.prepare( 'SELECT name, sha256 FROM schema_migrations ORDER BY name' ).all() ).toEqual(
+      files.map( ( name ) => ( { name, sha256: sha256Of( path.join( realDir, name ) ) } ) ),
+    )
     expect( tableNames() ).toEqual( expect.arrayContaining( trdTables ) )
     expect( fs.statSync( testFile ).mtimeMs ).toBe( testFileModifiedAt )
   } )

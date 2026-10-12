@@ -5,6 +5,7 @@ import {
   createProjectBody,
   errorResponse,
   messageEnvelope,
+  messageKind,
   messageResponse,
   postMessageBody,
   projectEnvelope,
@@ -13,6 +14,12 @@ import {
   threadEnvelope,
   threadResponse,
 } from './rest.js'
+
+describe( 'messageKind', () => {
+  it( 'lists the kinds the messages table allows, including review', () => {
+    expect( messageKind.options ).toEqual( [ 'chat', 'discussion', 'summary', 'review', 'system' ] )
+  } )
+} )
 
 describe( 'createProjectBody', () => {
   it( 'accepts a name', () => {
@@ -59,6 +66,16 @@ describe( 'messageResponse and threadResponse', () => {
 
   it( 'accepts a message', () => {
     expect( messageResponse.parse( message ) ).toEqual( message )
+  } )
+
+  it( 'accepts a message of kind review', () => {
+    const review = { ...message, thread: 'sa', author: 'sa', kind: 'review' }
+
+    expect( messageResponse.parse( review ) ).toEqual( review )
+  } )
+
+  it( 'still rejects an unknown kind', () => {
+    expect( messageResponse.safeParse( { ...message, kind: 'bogus' } ).success ).toBe( false )
   } )
 
   it( 'accepts a thread of messages', () => {

@@ -45,6 +45,18 @@ describe( 'insertMessage', () => {
   } )
 } )
 
+describe( 'review messages (migration 0002)', () => {
+  it( 'stores a review written by sa in the sa thread', () => {
+    const message = writeTransaction( temp.db, createBus(), ( tx ) => insertMessage( tx, { project_id: 'p1', thread: 'sa', author: 'sa', kind: 'review', content: 'Notes' } ) )
+
+    expect( message ).toMatchObject( { project_id: 'p1', thread: 'sa', author: 'sa', kind: 'review' } )
+  } )
+
+  it( 'refuses a review written by pm in the pm thread', () => {
+    expect( () => writeTransaction( temp.db, createBus(), ( tx ) => insertMessage( tx, { project_id: 'p1', thread: 'pm', author: 'pm', kind: 'review', content: 'Notes' } ) ) ).toThrow( /CHECK constraint failed/ )
+  } )
+} )
+
 describe( 'listRecentMessages', () => {
   function seed( count: number, overrides: Partial< typeof messages.$inferInsert > = {} ): void {
     for( let index = 1; index <= count; index++ ) {

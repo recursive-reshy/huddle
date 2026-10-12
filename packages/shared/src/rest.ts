@@ -7,7 +7,7 @@ export const projectStates = [ 'DISCOVERY', 'BRIEF_DRAFT', 'GATE_BRIEF', 'SA_REV
 export const projectState = z.enum( projectStates )
 export type ProjectState = z.infer< typeof projectState >
 
-export const messageKind = z.enum( [ 'chat', 'discussion', 'summary', 'system' ] )
+export const messageKind = z.enum( [ 'chat', 'discussion', 'summary', 'review', 'system' ] )
 export type MessageKind = z.infer< typeof messageKind >
 
 export const createProjectBody = z.strictObject( { name: z.string().min( 1 ) } )

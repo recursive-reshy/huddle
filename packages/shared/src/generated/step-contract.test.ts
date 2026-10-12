@@ -76,8 +76,38 @@ describe( 'stepLine', () => {
     expect( stepLine.safeParse( { type: 'heartbeat', extra: 1 } ).success ).toBe( false )
   } )
 
-  // Waits on the Lead Dev (Agents): step_contract.json only has the chat_reply output (TRD v1.8 §6 lists five).
-  it.todo( 'accepts result lines for draft_artifact, review, clarification and summary' )
+  describe( 'review output', () => {
+    const result = ( output: unknown ): unknown => ( { type: 'result', prompt_hash: hash, output } )
+
+    it( 'accepts notes with questions', () => {
+      const line = result( { output_type: 'review', notes: 'n', questions: [ { question: 'q' } ] } )
+
+      expect( stepLine.parse( line ) ).toEqual( line )
+    } )
+
+    it( 'accepts notes with no questions', () => {
+      const line = result( { output_type: 'review', notes: 'n', questions: [] } )
+
+      expect( stepLine.parse( line ) ).toEqual( line )
+    } )
+
+    it( 'rejects 11 questions', () => {
+      const questions = Array.from( { length: 11 }, () => ( { question: 'q' } ) )
+
+      expect( stepLine.safeParse( result( { output_type: 'review', notes: 'n', questions } ) ).success ).toBe( false )
+    } )
+
+    it( 'rejects empty notes', () => {
+      expect( stepLine.safeParse( result( { output_type: 'review', notes: '', questions: [] } ) ).success ).toBe( false )
+    } )
+
+    it( 'rejects an empty question', () => {
+      expect( stepLine.safeParse( result( { output_type: 'review', notes: 'n', questions: [ { question: '' } ] } ) ).success ).toBe( false )
+    } )
+  } )
+
+  // Waits on the Lead Dev (Agents): the clarification, summary and draft_artifact questions outputs arrive with C2, C3 and D1.
+  it.todo( 'accepts result lines for clarification, summary and the draft_artifact questions variant' )
 } )
 
 describe( 'stepRequest', () => {

@@ -82,7 +82,7 @@ export const messages = sqliteTable( 'messages', {
   project_id: text( 'project_id' ).notNull(),
   thread: text( 'thread' ).notNull(),
   author: text( 'author' ).notNull(),
-  kind: text( 'kind', { enum: [ 'chat', 'discussion', 'summary', 'system' ] } ).notNull(),
+  kind: text( 'kind', { enum: [ 'chat', 'discussion', 'summary', 'review', 'system' ] } ).notNull(),
   content: text( 'content' ).notNull(),
   job_id: integer( 'job_id' ),
   created_at: integer( 'created_at' ).notNull().default( epochMs ),
