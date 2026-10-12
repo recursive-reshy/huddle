@@ -1,7 +1,7 @@
 import logging
 from collections.abc import AsyncIterator
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, omit
 from anthropic.lib.streaming import AsyncMessageStream
 from anthropic.types import MessageParam, TextBlockParam
 
@@ -30,7 +30,9 @@ async def stream_chat_reply(
             model = model,
             max_tokens = prompt.max_tokens,
             system = system,
-            messages = turns
+            messages = turns,
+            thinking = prompt.thinking or omit,
+            output_config = prompt.output_config or omit
         ) as stream:
             active_stream = stream
 

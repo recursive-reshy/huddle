@@ -3,9 +3,18 @@ from collections.abc import AsyncIterator
 from enum import StrEnum
 from time import monotonic
 
-from anthropic import AsyncAnthropic
+from anthropic import AsyncAnthropic, omit
 from anthropic.lib.streaming import AsyncMessageStream
-from anthropic.types import Message, MessageParam, TextBlockParam, ToolChoiceAutoParam, ToolParam, ToolUseBlock
+from anthropic.types import (
+    Message,
+    MessageParam,
+    RedactedThinkingBlockParam,
+    TextBlockParam,
+    ThinkingBlockParam,
+    ToolChoiceAutoParam,
+    ToolParam,
+    ToolUseBlock
+)
 from pydantic import BaseModel, ValidationError
 
 from agents.contract.errors import ErrorCode
@@ -99,7 +108,9 @@ async def stream_draft_artifact(
                 system = system,
                 messages = messages,
                 tools = [ tool ],
-                tool_choice = tool_choice
+                tool_choice = tool_choice,
+                thinking = prompt.thinking or omit,
+                output_config = prompt.output_config or omit
             ) as stream:
                 active_stream = stream
 
@@ -158,14 +169,26 @@ async def stream_draft_artifact(
             if block.type == "tool_use" and block.name == "submit_draft":
                 tool_use = block
 
+        thinking_blocks: list[ ThinkingBlockParam | RedactedThinkingBlockParam ] = []
+        for block in message.content:
+            if block.type == "thinking":
+                thinking_blocks.append(
+                    { "type": "thinking", "thinking": block.thinking, "signature": block.signature }
+                )
+            elif block.type == "redacted_thinking":
+                thinking_blocks.append( { "type": "redacted_thinking", "data": block.data } )
+
         follow_up_turns: list[ MessageParam ]
         if tool_use is None:
             errors = [ "submit_draft was not called" ]
             texts = [ block.text for block in message.content if block.type == "text" and block.text != "" ]
             follow_up_turns = []
-            if texts:
+            if thinking_blocks or texts:
                 follow_up_turns.append(
-                    { "role": "assistant", "content": [ { "type": "text", "text": text } for text in texts ] }
+                    {
+                        "role": "assistant",
+                        "content": [ *thinking_blocks, *( { "type": "text", "text": text } for text in texts ) ]
+                    }
                 )
 
             follow_up_turns.append( { "role": "user", "content": [ { "type": "text", "text": MISSING_TOOL_CALL_NOTICE } ] } )
@@ -187,6 +210,7 @@ async def stream_draft_artifact(
                 {
                     "role": "assistant",
                     "content": [
+                        *thinking_blocks,
                         { "type": "tool_use", "id": tool_use.id, "name": tool_use.name, "input": tool_use.input }
                     ]
                 },

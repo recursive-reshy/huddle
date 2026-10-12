@@ -5,6 +5,8 @@ import pytest
 from pydantic import SecretStr
 
 from agents.config import Settings
+from agents.main import create_app
+from agents.roles.registry import registry
 from agents.runtime.context import EARLIER_MESSAGES_NOTICE
 from agents.runtime.prompts import load_prompt
 
@@ -51,3 +53,53 @@ def test_repo_prompt_has_front_matter_and_names_the_earlier_messages_notice() ->
 
     assert prompt.max_tokens > 0
     assert EARLIER_MESSAGES_NOTICE in prompt.body
+
+@pytest.mark.parametrize(
+    ( "front_matter_line", "key", "bad_value", "allowed_value" ),
+    [
+        ( "thinking = \"disabled\"", "thinking", "disabled", "between_tools" ),
+        ( "thinking = \"enabled\"", "thinking", "enabled", "adaptive" ),
+        ( "effort = \"extreme\"", "effort", "extreme", "medium" ),
+        ( "effort = 3", "effort", "3", "high" )
+    ]
+)
+def test_undocumented_thinking_or_effort_fails_to_load_naming_the_key_the_value_and_the_allowed_values(
+    tmp_path: Path,
+    front_matter_line: str,
+    key: str,
+    bad_value: str,
+    allowed_value: str
+) -> None:
+    write_prompt( tmp_path, f"+++\nmax_tokens = 1024\n{front_matter_line}\n+++\n{body}".encode() )
+
+    with pytest.raises( ValueError ) as exception_info:
+        load_prompt( tmp_path, "pm", "pm_discovery_reply" )
+
+    message = str( exception_info.value )
+    assert key in message
+    assert bad_value in message
+    assert allowed_value in message
+
+@pytest.mark.parametrize( "front_matter_line", [ "thinking = \"disabled\"", "effort = \"extreme\"" ] )
+def test_real_mode_refuses_to_start_when_a_registered_prompt_has_a_bad_generation_setting(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    front_matter_line: str
+) -> None:
+    monkeypatch.delenv( "AGENTS_FAKE", raising = False )
+    for agent, kind in registry:
+        prompt_path = tmp_path / agent / f"{kind}.md"
+        prompt_path.parent.mkdir( parents = True, exist_ok = True )
+        prompt_path.write_bytes( f"+++\nmax_tokens = 1024\n+++\n{body}".encode() )
+    write_prompt( tmp_path, f"+++\nmax_tokens = 1024\n{front_matter_line}\n+++\n{body}".encode() )
+
+    with pytest.raises( ValueError ):
+        create_app( Settings( anthropic_api_key = SecretStr( "sk-test-secret" ), prompts_dir = tmp_path ) )
+
+def test_every_registered_repo_prompt_loads_with_or_without_generation_settings() -> None:
+    prompts_directory = Settings( anthropic_api_key = SecretStr( "sk-test-secret" ) ).prompts_dir
+
+    for agent, kind in registry:
+        prompt = load_prompt( prompts_directory, agent, kind )
+
+        assert prompt.max_tokens > 0
