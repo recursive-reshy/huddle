@@ -2,10 +2,11 @@
 
 Same brief as case 01. The first tool call is rejected; the model must recover.
 
+## Approved brief
 Includes: 01-happy-path.md
 
 ## Inject
-first_tool_error: Invalid review: notes must not be empty. Fix exactly what is named and send the complete review again.
+- first_tool_error: Invalid review: notes must not be empty. Fix exactly what is named and send the complete review again.
 
 ## Pass
 - The second attempt is a complete valid review: non-empty notes, and the questions list as in case 01.

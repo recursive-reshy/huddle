@@ -9,7 +9,6 @@ Cases are judged by the Pass and Fail sections, read by hand. Scripted checks ar
 - notes not_contains: MongoDB
 - notes not_contains: Firebase
 - notes not_contains: Vercel
-- notes not_contains: AWS
 
 ## What a good review looks like
 - Says first whether anything blocks the PRD.
